@@ -1,0 +1,14 @@
+version: "3.6"
+
+services:
+  certbindb:
+    image: ${DEV_DB_IMAGE}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${DEV_DB_NAME}
+    working_dir: ${DB_HOME}
+    ports: 
+      - 5432:5432
+    volumes:
+      - ./.data/dev_${DEV_DB_NAME}_psql:/var/lib/postgresql/data

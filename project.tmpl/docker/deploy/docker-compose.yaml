@@ -1,0 +1,23 @@
+version: "3.6"
+
+services:
+  # For development only
+  dev:
+    depends_on:
+      - dev.db
+    image: ${DEV_IMAGE}
+    environment:
+      - PROJECT_NAME=${PROJECT_NAME}
+      - APP_NAME=${APP_NAME}
+    env_file:
+      - env/cipher.env
+      - env/database.env
+      - env/secret.env
+    working_dir: ${APP_HOME}
+    volumes:
+      - ${HOST_APP_DIR_RUN:-../../src}:${APP_HOME}
+      - ./mssql/scripts:${APP_HOME}/scripts
+      - ./env/jobs:${ENV_HOME}/jobs
+    entrypoint: /bin/sh
+    stdin_open: true
+    tty: true

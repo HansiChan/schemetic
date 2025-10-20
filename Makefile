@@ -1,8 +1,15 @@
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+  SED_INPLACE := sed -i ''
+else
+  SED_INPLACE := sed -i
+endif
+
 create.project.mssql: check_project_nulity check_app_nulity check_target_existence
 	@project_path=$(target)/$(project)_$(app) && \
 		cp -r project.tmpl $${project_path} && \
 		\
-		sed -i'' -e 's/SCHEMATIC__PROJECT_NAME/$(project)/g' \
+		$(SED_INPLACE) -e 's/SCHEMATIC__PROJECT_NAME/$(project)/g' \
 			-e 's/SCHEMATIC__APP_NAME/$(app)/g' \
 			-e 's/SCHEMATIC__DB_TYPE/mssql/g' \
 			-e 's/SCHEMATIC__BASE_VERSION/$(shell cat VERSION)/g' \
@@ -17,7 +24,7 @@ create.project.psql: check_project_nulity check_app_nulity check_target_existenc
 	@project_path=$(target)/$(project)_$(app) && \
 		cp -r project.tmpl $${project_path} && \
 		\
-		sed -i'' -e 's/SCHEMATIC__PROJECT_NAME/$(project)/g' \
+		$(SED_INPLACE) -e 's/SCHEMATIC__PROJECT_NAME/$(project)/g' \
 			-e 's/SCHEMATIC__APP_NAME/$(app)/g' \
 			-e 's/SCHEMATIC__DB_TYPE/psql/g' \
 			-e 's/SCHEMATIC__BASE_VERSION/$(shell cat VERSION)/g' \

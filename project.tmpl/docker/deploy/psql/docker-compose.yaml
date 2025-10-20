@@ -1,7 +1,7 @@
 version: "3.6"
 
 services:
-  certbindb:
+  dev.db:
     image: ${DEV_DB_IMAGE}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}

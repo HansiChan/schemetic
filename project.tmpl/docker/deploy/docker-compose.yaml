@@ -16,7 +16,6 @@ services:
     working_dir: ${APP_HOME}
     volumes:
       - ${HOST_APP_DIR_RUN:-../../src}:${APP_HOME}
-      - ./mssql/scripts:${APP_HOME}/scripts
       - ./env/jobs:${ENV_HOME}/jobs
     entrypoint: /bin/sh
     stdin_open: true

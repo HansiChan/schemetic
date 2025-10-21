@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pyflink-code
+  name: ${CODE_CM_NAME:-cm-code}
   namespace: ${NAMESPACE}
   annotations:
     managed-by: make-cm.up

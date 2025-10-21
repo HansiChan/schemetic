@@ -5,13 +5,14 @@ K8S_FILE ?= app.yaml
 # Where to store the rendered manifest (ensures down matches up exactly)
 K8S_OUT ?= .rendered.yaml
 
-.PHONY: up down status render ns cm.up cm.down cm.render
+.PHONY: up down status render ns cm.up cm.down cm.render ca.up ca.down ca.render
 
 # Apply with variable substitution using envsubst (from gettext)
 up:
 	@set -e; \
 	$(MAKE) ns; \
 	$(MAKE) cm.up; \
+	$(MAKE) ca.up; \
 	if command -v envsubst >/dev/null 2>&1; then \
 	  set -o allexport; [ -f .env ] && . ./.env; set +o allexport; \
 	  envsubst < $(K8S_FILE) > $(K8S_OUT); \
@@ -57,8 +58,8 @@ ns:
 # ---- ConfigMap for Python code ----
 # Directory containing Python source files to mount into the Flink container
 CODE_DIR ?= code
-# Name of the ConfigMap used by app.yaml (mounted at /opt/flink/usrcode)
-CODE_CM_NAME ?= pyflink-code
+# Name of the code ConfigMap used by app.yaml (mounted at /opt/flink/usrcode)
+CODE_CM_NAME ?= cm-code
 
 # Render the ConfigMap YAML from files (no apply)
 cm.render:
@@ -81,3 +82,36 @@ cm.up:
 # Delete the ConfigMap
 cm.down:
 	@kubectl delete configmap $(CODE_CM_NAME) -n $${NAMESPACE:-flink} --ignore-not-found
+
+# ---- ConfigMap for CA certs ----
+# Directory (or file) containing CA cert(s). If directory exists and not empty, use it;
+# else fallback to file 'minio-ca.crt' in current directory.
+CA_DIR ?= ca
+CA_CM_NAME ?= cm-ca
+
+ca.render:
+	@set -e; \
+	SRC_OPT=""; \
+	if [ -d "$(CA_DIR)" ] && [ "$(shell ls -A $(CA_DIR) 2>/dev/null | wc -l)" -gt 0 ]; then \
+	  SRC_OPT="--from-file=$(CA_DIR)"; \
+	elif [ -f "minio-ca.crt" ]; then \
+	  SRC_OPT="--from-file=minio-ca.crt"; \
+	else \
+	  echo "No CA sources found. Provide $(CA_DIR)/ or minio-ca.crt"; exit 1; \
+	fi; \
+	kubectl create configmap $(CA_CM_NAME) $$SRC_OPT -n $${NAMESPACE:-flink} --dry-run=client -o yaml
+
+ca.up:
+	@set -e; \
+	SRC_OPT=""; \
+	if [ -d "$(CA_DIR)" ] && [ "$(shell ls -A $(CA_DIR) 2>/dev/null | wc -l)" -gt 0 ]; then \
+	  SRC_OPT="--from-file=$(CA_DIR)"; \
+	elif [ -f "minio-ca.crt" ]; then \
+	  SRC_OPT="--from-file=minio-ca.crt"; \
+	else \
+	  echo "No CA sources found. Provide $(CA_DIR)/ or minio-ca.crt"; exit 1; \
+	fi; \
+	kubectl create configmap $(CA_CM_NAME) $$SRC_OPT -n $${NAMESPACE:-flink} --dry-run=client -o yaml | kubectl apply -f -
+
+ca.down:
+	@kubectl delete configmap $(CA_CM_NAME) -n $${NAMESPACE:-flink} --ignore-not-found

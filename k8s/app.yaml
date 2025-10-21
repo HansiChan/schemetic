@@ -55,8 +55,8 @@ spec:
           persistentVolumeClaim:
             claimName: flink-data
         - name: minio-ca
-          secret:
-            secretName: minio-ca
+          configMap:
+            name: ${CA_CM_NAME:-cm-ca}
         - name: truststore-vol
           emptyDir: {}
         - name: bootstrap
@@ -65,7 +65,7 @@ spec:
             defaultMode: 0755
         - name: pycode
           configMap:
-            name: pyflink-code
+            name: cm-code
             defaultMode: 0444
 
       initContainers:
@@ -119,4 +119,3 @@ spec:
             - name: pycode
               mountPath: /opt/flink/usrcode
               readOnly: true
-

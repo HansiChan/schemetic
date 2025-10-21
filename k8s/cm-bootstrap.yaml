@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flink-bootstrap
+  namespace: ${NAMESPACE}
+data:
+  register-ca.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    CA_FILE="${CA_FILE:-/ca/minio-ca.crt}"
+    TARGET_TRUSTSTORE="${TARGET_TRUSTSTORE:-/truststore/cacerts}"
+    STOREPASS="${STOREPASS:-changeit}"
+
+    echo "[register-ca] CA_FILE=${CA_FILE}"
+    echo "[register-ca] TARGET_TRUSTSTORE=${TARGET_TRUSTSTORE}"
+
+    if [[ ! -f "${CA_FILE}" ]]; then
+      echo "[register-ca] ERROR: CA file not found: ${CA_FILE}" >&2
+      exit 1
+    fi
+
+    CACERTS_CANDIDATES=(
+      "/opt/java/openjdk/lib/security/cacerts"
+      "/etc/ssl/certs/java/cacerts"
+      "/usr/lib/jvm/java-11-openjdk/lib/security/cacerts"
+    )
+    FOUND_SEED=""
+    for p in "${CACERTS_CANDIDATES[@]}"; do
+      if [[ -f "$p" ]]; then
+        FOUND_SEED="$p"
+        break
+      fi
+    done
+
+    if [[ -n "${FOUND_SEED}" ]]; then
+      echo "[register-ca] Seed cacerts: ${FOUND_SEED}"
+      cp "${FOUND_SEED}" "${TARGET_TRUSTSTORE}"
+    else
+      echo "[register-ca] No seed cacerts found, initializing empty keystore"
+      keytool -genkey -alias temp -keystore "${TARGET_TRUSTSTORE}" -storepass "${STOREPASS}" -keypass "${STOREPASS}" \
+        -dname "CN=temp" -keyalg RSA -keysize 1024 -validity 1 >/dev/null 2>&1
+      keytool -delete -alias temp -keystore "${TARGET_TRUSTSTORE}" -storepass "${STOREPASS}" >/dev/null 2>&1 || true
+    fi
+
+    keytool -delete -alias minio-ca -keystore "${TARGET_TRUSTSTORE}" -storepass "${STOREPASS}" >/dev/null 2>&1 || true
+    keytool -importcert -noprompt -trustcacerts \
+      -alias minio-ca -file "${CA_FILE}" \
+      -keystore "${TARGET_TRUSTSTORE}" -storepass "${STOREPASS}"
+
+    keytool -list -keystore "${TARGET_TRUSTSTORE}" -storepass "${STOREPASS}" | grep -i "minio-ca" || true
+    echo "[register-ca] OK: truststore ready at ${TARGET_TRUSTSTORE}"

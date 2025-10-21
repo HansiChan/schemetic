@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pyflink-code
+  namespace: ${NAMESPACE}
+  annotations:
+    managed-by: make-cm.up
+    note: contents are generated from files under k8s/code via `make -C k8s cm.up`
+data: {}

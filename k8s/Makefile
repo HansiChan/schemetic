@@ -5,19 +5,21 @@ K8S_FILE ?= app.yaml
 # Where to store the rendered manifest (ensures down matches up exactly)
 K8S_OUT ?= .rendered.yaml
 
-.PHONY: up down status render ns
+.PHONY: up down status render ns cm.up cm.down cm.render
 
 # Apply with variable substitution using envsubst (from gettext)
 up:
-	@set -e; \
-	if command -v envsubst >/dev/null 2>&1; then \
-	  set -o allexport; [ -f .env ] && . ./.env; set +o allexport; \
-	  envsubst < $(K8S_FILE) > $(K8S_OUT); \
-	  kubectl apply -f $(K8S_OUT); \
-	else \
-	  echo "envsubst not found. Install gettext, or run: export vars; envsubst < $(K8S_FILE) > $(K8S_OUT) && kubectl apply -f $(K8S_OUT)"; \
-	  exit 1; \
-	fi
+    @set -e; \
+    $(MAKE) ns; \
+    $(MAKE) cm.up; \
+    if command -v envsubst >/dev/null 2>&1; then \
+      set -o allexport; [ -f .env ] && . ./.env; set +o allexport; \
+      envsubst < $(K8S_FILE) > $(K8S_OUT); \
+      kubectl apply -f $(K8S_OUT); \
+    else \
+      echo "envsubst not found. Install gettext, or run: export vars; envsubst < $(K8S_FILE) > $(K8S_OUT) && kubectl apply -f $(K8S_OUT)"; \
+      exit 1; \
+    fi
 
 # Delete resources created from the saved rendered manifest
 down:
@@ -51,3 +53,29 @@ status:
 # Ensure namespace exists
 ns:
 	kubectl get ns ${NAMESPACE:-flink} >/dev/null 2>&1 || kubectl create ns ${NAMESPACE:-flink}
+
+# ---- ConfigMap for Python code ----
+# Directory containing Python source files to mount into the Flink container
+CODE_DIR ?= code
+# Name of the ConfigMap used by app.yaml (mounted at /opt/flink/usrcode)
+CODE_CM_NAME ?= pyflink-code
+
+# Render the ConfigMap YAML from files (no apply)
+cm.render:
+	@set -e; \
+	if [ ! -d "$(CODE_DIR)" ]; then echo "Missing $(CODE_DIR) directory"; exit 1; fi; \
+	kubectl -n ${NAMESPACE:-flink} create configmap $(CODE_CM_NAME) \
+	  --from-file=$(CODE_DIR) \
+	  --dry-run=client -o yaml
+
+# Create/Update the ConfigMap from local files
+cm.up:
+	@set -e; \
+	if [ ! -d "$(CODE_DIR)" ]; then echo "Missing $(CODE_DIR) directory"; exit 1; fi; \
+	kubectl -n ${NAMESPACE:-flink} create configmap $(CODE_CM_NAME) \
+	  --from-file=$(CODE_DIR) \
+	  --dry-run=client -o yaml | kubectl apply -f -
+
+# Delete the ConfigMap
+cm.down:
+	@kubectl -n ${NAMESPACE:-flink} delete configmap $(CODE_CM_NAME) --ignore-not-found

@@ -64,18 +64,20 @@ CODE_CM_NAME ?= pyflink-code
 cm.render:
 	@set -e; \
 	if [ ! -d "$(CODE_DIR)" ]; then echo "Missing $(CODE_DIR) directory"; exit 1; fi; \
-	kubectl -n ${NAMESPACE:-flink} create configmap $(CODE_CM_NAME) \
+	kubectl create configmap $(CODE_CM_NAME) \
 	  --from-file=$(CODE_DIR) \
+	  -n ${NAMESPACE:-flink} \
 	  --dry-run=client -o yaml
 
 # Create/Update the ConfigMap from local files
 cm.up:
 	@set -e; \
 	if [ ! -d "$(CODE_DIR)" ]; then echo "Missing $(CODE_DIR) directory"; exit 1; fi; \
-	kubectl -n ${NAMESPACE:-flink} create configmap $(CODE_CM_NAME) \
+	kubectl create configmap $(CODE_CM_NAME) \
 	  --from-file=$(CODE_DIR) \
+	  -n ${NAMESPACE:-flink} \
 	  --dry-run=client -o yaml | kubectl apply -f -
 
 # Delete the ConfigMap
 cm.down:
-	@kubectl -n ${NAMESPACE:-flink} delete configmap $(CODE_CM_NAME) --ignore-not-found
+	@kubectl delete configmap $(CODE_CM_NAME) -n ${NAMESPACE:-flink} --ignore-not-found

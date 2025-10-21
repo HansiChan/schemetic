@@ -28,14 +28,6 @@ Schematic provides a simple, Make-driven workflow to build and run containerized
   - Shell (dev app): `make -C docker shell.dev`
   - Shell (dev DB): `make -C docker shell.dev.db`
 
-**Database Init (MSSQL, no Ruby)**
-- Ruby-based init has been removed in favor of shell scripts.
-- To initialize the MSSQL dev DB (create login/db/schemas) after the DB container is up:
-  - `docker compose -f docker/deploy/docker-compose.yaml -f docker/deploy/mssql/docker-compose.yaml exec dev.db /bin/bash -lc "/home/mssql/scripts/setup-db.sh"`
-  - Or if using the project’s compose context: `cd docker && ${CONTAINER_CLI:-docker} compose exec dev.db /bin/bash -lc "/home/mssql/scripts/setup-db.sh"`
-- The script reads env from `docker/make.env/common.env` (+ `common.local.env`) via compose and uses `sqlcmd` inside the container.
-- PostgreSQL deployments do not use Ruby here. If you want similar init for Postgres, we can add a shell/Python script that runs `psql` to create roles/db as needed.
-
 **Configuration**
 - `docker/make.env/common.env`
   - User config to change most often:
@@ -49,7 +41,7 @@ Schematic provides a simple, Make-driven workflow to build and run containerized
 
 **Databases**
 - MSSQL (`DEV_DB_TYPE=mssql`)
-  - Image pinned in config.
+  - Image pinned in config; adapter `tinytds`.
   - Set in `common.local.env`: `MSSQL_SA_PASSWORD`, `DEV_DB_USER`, `DEV_DB_PASSWORD`.
 - PostgreSQL (`DEV_DB_TYPE=psql`)
   - Image pinned in config; adapter `postgres`.
@@ -89,3 +81,4 @@ Schematic provides a simple, Make-driven workflow to build and run containerized
 
 **License**
 - See `LICENSE` if present in your distribution.
+

@@ -48,11 +48,11 @@ render:
 	fi
 
 status:
-	kubectl get pods -n ${NAMESPACE:-flink} -o wide
+	kubectl get pods -n $${NAMESPACE:-flink} -o wide
 
 # Ensure namespace exists
 ns:
-	kubectl get ns ${NAMESPACE:-flink} >/dev/null 2>&1 || kubectl create ns ${NAMESPACE:-flink}
+	kubectl get ns $${NAMESPACE:-flink} >/dev/null 2>&1 || kubectl create ns $${NAMESPACE:-flink}
 
 # ---- ConfigMap for Python code ----
 # Directory containing Python source files to mount into the Flink container
@@ -66,7 +66,7 @@ cm.render:
 	if [ ! -d "$(CODE_DIR)" ]; then echo "Missing $(CODE_DIR) directory"; exit 1; fi; \
 	kubectl create configmap $(CODE_CM_NAME) \
 	  --from-file=$(CODE_DIR) \
-	  -n ${NAMESPACE:-flink} \
+	  -n $${NAMESPACE:-flink} \
 	  --dry-run=client -o yaml
 
 # Create/Update the ConfigMap from local files
@@ -75,9 +75,9 @@ cm.up:
 	if [ ! -d "$(CODE_DIR)" ]; then echo "Missing $(CODE_DIR) directory"; exit 1; fi; \
 	kubectl create configmap $(CODE_CM_NAME) \
 	  --from-file=$(CODE_DIR) \
-	  -n ${NAMESPACE:-flink} \
+	  -n $${NAMESPACE:-flink} \
 	  --dry-run=client -o yaml | kubectl apply -f -
 
 # Delete the ConfigMap
 cm.down:
-	@kubectl delete configmap $(CODE_CM_NAME) -n ${NAMESPACE:-flink} --ignore-not-found
+	@kubectl delete configmap $(CODE_CM_NAME) -n $${NAMESPACE:-flink} --ignore-not-found

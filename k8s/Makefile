@@ -9,17 +9,17 @@ K8S_OUT ?= .rendered.yaml
 
 # Apply with variable substitution using envsubst (from gettext)
 up:
-    @set -e; \
-    $(MAKE) ns; \
-    $(MAKE) cm.up; \
-    if command -v envsubst >/dev/null 2>&1; then \
-      set -o allexport; [ -f .env ] && . ./.env; set +o allexport; \
-      envsubst < $(K8S_FILE) > $(K8S_OUT); \
-      kubectl apply -f $(K8S_OUT); \
-    else \
-      echo "envsubst not found. Install gettext, or run: export vars; envsubst < $(K8S_FILE) > $(K8S_OUT) && kubectl apply -f $(K8S_OUT)"; \
-      exit 1; \
-    fi
+	@set -e; \
+	$(MAKE) ns; \
+	$(MAKE) cm.up; \
+	if command -v envsubst >/dev/null 2>&1; then \
+	  set -o allexport; [ -f .env ] && . ./.env; set +o allexport; \
+	  envsubst < $(K8S_FILE) > $(K8S_OUT); \
+	  kubectl apply -f $(K8S_OUT); \
+	else \
+	  echo "envsubst not found. Install gettext, or run: export vars; envsubst < $(K8S_FILE) > $(K8S_OUT) && kubectl apply -f $(K8S_OUT)"; \
+	  exit 1; \
+	fi
 
 # Delete resources created from the saved rendered manifest
 down:

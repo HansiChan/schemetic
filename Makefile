@@ -18,7 +18,9 @@ create.project.mssql: check_project_nulity check_app_nulity check_target_existen
 		rm -fr $${project_path}/docker/make.env/psql && \
 		rm -fr $${project_path}/docker/deploy/psql && \
 		\
-		mv $${project_path}/gitignore $${project_path}/.gitignore
+		mv $${project_path}/gitignore $${project_path}/.gitignore && \
+		\
+		cp -r k8s $${project_path}/k8s
 
 create.project.psql: check_project_nulity check_app_nulity check_target_existence
 	@project_path=$(target)/$(project)_$(app) && \
@@ -33,7 +35,9 @@ create.project.psql: check_project_nulity check_app_nulity check_target_existenc
 		rm -fr $${project_path}/docker/make.env/mssql && \
 		rm -fr $${project_path}/docker/deploy/mssql && \
 		\
-		mv $${project_path}/gitignore $${project_path}/.gitignore
+		mv $${project_path}/gitignore $${project_path}/.gitignore && \
+		\
+		cp -r k8s $${project_path}/k8s
 
 check_project_nulity:
 	@[ -z "$(project)" ] && \

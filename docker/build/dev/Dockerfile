@@ -6,7 +6,7 @@ ARG UV_VERSION=v0.4.20
 
 # Base tools
 RUN apt-get update && apt-get install -y \
-    curl ca-certificates findutils build-essential \
+    curl ca-certificates findutils build-essential openjdk-17-jdk-headless \
  && rm -rf /var/lib/apt/lists/*
 
 # Install uv and Python dependencies via uv
@@ -51,7 +51,24 @@ RUN set -eux; \
     PLUGINS_DIR=/opt/flink/flink-plugins; \
     mkdir -p "${PLUGINS_DIR}"; \
     BASE_MVN="https://repo1.maven.org/maven2"; \
-    fetch() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
+    ALT_MVN1="https://repo.maven.apache.org/maven2"; \
+    ALT_MVN2="https://maven.aliyun.com/repository/central"; \
+    fetch() { \
+      url="$1"; out="$2"; \
+      echo "Downloading: $url"; \
+      if curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; then \
+        return 0; \
+      fi; \
+      path="$(echo "$url" | sed -E 's#https?://[^/]+##')"; \
+      for base in "$ALT_MVN1" "$ALT_MVN2"; do \
+        alt="$base$path"; echo "Retrying via mirror: $alt"; \
+        if curl -fL --retry 3 --retry-delay 2 -o "$out" "$alt"; then \
+          return 0; \
+        fi; \
+      done; \
+      echo "ERROR: failed to download $url (and mirrors)"; \
+      return 22; \
+    }; \
     # Kafka Connect API
     fetch "$BASE_MVN/org/apache/kafka/connect-api/${KAFKA_VERSION}/connect-api-${KAFKA_VERSION}.jar" "${PLUGINS_DIR}/connect-api-${KAFKA_VERSION}.jar"; \
     # Flink core and connectors

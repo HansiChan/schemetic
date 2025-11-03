@@ -44,7 +44,10 @@ Schematic provides a simple, Make-driven workflow to build and run containerized
 - Layout
   - Python entry: `src/app.py`
   - SQL pipeline: `src/sql/pipeline.sql`
-  - Plugins: downloaded at build time; see `docker/build/dev/Dockerfile` for overridable args
+  - Plugins: downloaded at build time; defaults pin Apache Paimon to ASF snapshot jars:
+    - `paimon-flink-1.20-1.4-20251031.003016-47.jar`
+    - `paimon-s3-1.4-20251031.003016-47.jar`
+    You can override URLs via `PAIMON_FLINK_JAR_URL` and `PAIMON_S3_JAR_URL`.
   - Python deps: `docker/build/dev/requirements.txt`
 - Build and push
   - Build: `make -C docker/build/dev build.app`

@@ -38,12 +38,12 @@ ARG FLINK_VERSION=1.20.1
 ARG SCALA_BINARY=2.12
 ARG KAFKA_VERSION=3.8.1
 ARG LOG4J_VERSION=2.17.1
-# Optional: Paimon release (defaults to 1.3). To use a snapshot, set explicit URLs below.
-ARG PAIMON_VERSION=1.3
+# Optional: Paimon release (defaults to 1.3). To use a snapshot, set explicit URLs below (defaults point to 1.4-SNAPSHOT).
+ARG PAIMON_VERSION=1.4
 ARG PAIMON_FLINK_MAJOR=1.20
-# Optional explicit URLs for Paimon snapshot artifacts (leave empty to use release above)
-ARG PAIMON_FLINK_JAR_URL=""
-ARG PAIMON_S3_JAR_URL=""
+# Optional explicit URLs for Paimon snapshot artifacts (defaults to ASF snapshots)
+ARG PAIMON_FLINK_JAR_URL="https://repository.apache.org/content/groups/snapshots/org/apache/paimon/paimon-flink-1.20/1.4-SNAPSHOT/paimon-flink-1.20-1.4-20251031.003016-47.jar"
+ARG PAIMON_S3_JAR_URL="https://repository.apache.org/content/groups/snapshots/org/apache/paimon/paimon-s3/1.4-SNAPSHOT/paimon-s3-1.4-20251031.003016-47.jar"
 
 RUN set -eux; \
     PLUGINS_DIR=/opt/flink/flink-plugins; \

@@ -59,7 +59,6 @@ RUN set -eux; \
     # Other required Flink and Log4j artifacts from Maven Central
     download "$BASE_MVN/org/apache/flink/flink-clients/${FLINK_VERSION}/flink-clients-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-clients-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-connector-datagen/${FLINK_VERSION}/flink-connector-datagen-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-connector-datagen-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-dist/${FLINK_VERSION}/flink-dist-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-dist-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-json/${FLINK_VERSION}/flink-json-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-json-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-kubernetes/${FLINK_VERSION}/flink-kubernetes-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-kubernetes-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-python/${FLINK_VERSION}/flink-python-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-python-${FLINK_VERSION}.jar"; \

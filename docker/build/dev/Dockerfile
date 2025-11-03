@@ -53,7 +53,13 @@ RUN set -eux; \
     BASE_MVN="https://repo1.maven.org/maven2"; \
     download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
     # Only the three user-specified artifacts (simple and explicit)
-    download "$FLINK_SHADED_HADOOP_URL" "${PLUGINS_DIR}/$(basename "$FLINK_SHADED_HADOOP_URL")"; \
+    # 1) flink-shaded-hadoop-3 — try Maven Central, then its canonical host, then Aliyun mirror
+    HADOOP_PATH="org/apache/flink/flink-shaded-hadoop-3/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"; \
+    HADOOP_OUT="${PLUGINS_DIR}/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"; \
+    download "https://repo1.maven.org/maven2/${HADOOP_PATH}" "$HADOOP_OUT" || \
+      download "https://repo.maven.apache.org/maven2/${HADOOP_PATH}" "$HADOOP_OUT" || \
+      download "https://maven.aliyun.com/repository/central/${HADOOP_PATH}" "$HADOOP_OUT"; \
+    # 2) Paimon (use user-specified snapshot URLs as-is)
     download "$PAIMON_FLINK_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_FLINK_JAR_URL")"; \
     download "$PAIMON_S3_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_S3_JAR_URL")"; \
     # Other required Flink and Log4j artifacts from Maven Central

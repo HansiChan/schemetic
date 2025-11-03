@@ -38,8 +38,8 @@ ARG FLINK_VERSION=1.20.1
 ARG SCALA_BINARY=2.12
 ARG KAFKA_VERSION=3.8.1
 ARG LOG4J_VERSION=2.17.1
-# Flink shaded Hadoop jar (explicit URL)
-ARG FLINK_SHADED_HADOOP_URL="https://repo1.maven.org/maven2/org/apache/flink/flink-shaded-hadoop-3/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"
+# Flink shaded Hadoop jar (explicit URL). Leave empty to skip.
+ARG FLINK_SHADED_HADOOP_URL=""
 # Apache Paimon version (release) and Flink compatibility
 # Defaults use stable release artifacts from Maven Central.
 ARG PAIMON_VERSION=1.4
@@ -80,9 +80,14 @@ RUN set -eux; \
     fetch "$BASE_MVN/org/apache/flink/flink-kubernetes/${FLINK_VERSION}/flink-kubernetes-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-kubernetes-${FLINK_VERSION}.jar"; \
     fetch "$BASE_MVN/org/apache/flink/flink-python/${FLINK_VERSION}/flink-python-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-python-${FLINK_VERSION}.jar"; \
     fetch "$BASE_MVN/org/apache/flink/flink-s3-fs-hadoop/${FLINK_VERSION}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar"; \
-    fetch "$BASE_MVN/org/apache/flink/flink-scala_${SCALA_BINARY}/${FLINK_VERSION}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar"; \
-    # Flink shaded Hadoop from explicit URL
-    fetch "$FLINK_SHADED_HADOOP_URL" "${PLUGINS_DIR}/$(basename "$FLINK_SHADED_HADOOP_URL")"; \
+    # Scala API was removed in newer Flink; ignore if not found
+    fetch "$BASE_MVN/org/apache/flink/flink-scala_${SCALA_BINARY}/${FLINK_VERSION}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar" || echo "flink-scala jar not found; continuing"; \
+    # Flink shaded Hadoop from explicit URL (optional)
+    if [ -n "$FLINK_SHADED_HADOOP_URL" ]; then \
+      fetch "$FLINK_SHADED_HADOOP_URL" "${PLUGINS_DIR}/$(basename "$FLINK_SHADED_HADOOP_URL")"; \
+    else \
+      echo "Skipping shaded Hadoop jar (FLINK_SHADED_HADOOP_URL empty)"; \
+    fi; \
     fetch "$BASE_MVN/org/apache/flink/flink-sql-gateway/${FLINK_VERSION}/flink-sql-gateway-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-sql-gateway-${FLINK_VERSION}.jar"; \
     fetch "$BASE_MVN/org/apache/flink/flink-table-api-java-uber/${FLINK_VERSION}/flink-table-api-java-uber-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-api-java-uber-${FLINK_VERSION}.jar"; \
     fetch "$BASE_MVN/org/apache/flink/flink-table-planner-loader/${FLINK_VERSION}/flink-table-planner-loader-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-planner-loader-${FLINK_VERSION}.jar"; \

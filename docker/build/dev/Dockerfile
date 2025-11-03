@@ -54,7 +54,7 @@ ARG PAIMON_FLINK_MAJOR=1.20
 ARG PAIMON_VERSION=1.4
 
 RUN set -eux; \
-    PLUGINS_DIR=/opt/flink/flink-plugins; \
+    PLUGINS_DIR=/opt/flink/lib; \
     mkdir -p "${PLUGINS_DIR}"; \
     BASE_MVN="https://repo1.maven.org/maven2"; \
     download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \

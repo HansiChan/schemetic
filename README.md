@@ -1,6 +1,6 @@
 **Overview**
 - Build a Flink application Docker image (Python + SQL included) and deploy it to Kubernetes via the Flink K8s Operator.
-- The image bundles required JARs under `/opt/flink/flink-plugins` and launches your Python program using Flink’s Python driver.
+- The image bundles required JARs under `/opt/flink/lib` and launches your Python program using Flink’s Python driver.
 
 **Prerequisites**
 - Docker and GNU Make
@@ -39,7 +39,7 @@
 
 **What The Image Includes**
 - Python runtime and your code under `/opt/flink/usrcode` and `/opt/flink/sql`.
-- JARs downloaded into `/opt/flink/flink-plugins`:
+- JARs downloaded into `/opt/flink/lib`:
   - Flink shaded Hadoop (from Cloudera): `flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar`
   - Paimon snapshots (from ASF snapshots): `paimon-flink-1.20-1.4-<snapshot>.jar`, `paimon-s3-1.4-<snapshot>.jar`
   - Flink modules (from Maven Central): `flink-clients`, `flink-connector-datagen`, `flink-json`, `flink-kubernetes`, `flink-python`, `flink-s3-fs-hadoop`, `flink-scala_2.12`, `flink-sql-gateway`, `flink-table-api-java-uber`, `flink-table-planner-loader`, `flink-table-runtime`
@@ -95,4 +95,3 @@
   - Install gettext or pre‑render: `envsubst < k8s/app.yaml > k8s/.rendered.yaml` then `kubectl apply -f k8s/.rendered.yaml`.
 - CA/truststore errors:
   - Ensure a valid cert is available in `k8s/ca/` or `k8s/minio-ca.crt`, or disable the initContainer and truststore wiring in `k8s/app.yaml`.
-

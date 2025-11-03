@@ -17,8 +17,8 @@ spec:
     execution.checkpointing.interval: "10s"
     state.checkpoints.dir: "file:///flink-data/flink-ckpt"
     state.savepoints.dir:  "file:///flink-data/flink-sp"
-    python.client.executable: "/usr/local/bin/python3"
-    python.executable: "/usr/local/bin/python3"
+    python.client.executable: "/opt/python/bin/python3"
+    python.executable: "/opt/python/bin/python3"
 
   jobManager:
     resource:
@@ -39,7 +39,7 @@ spec:
       - "-py"
       - "/opt/flink/usrcode/app.py"
       - "-pyexec"
-      - "/usr/local/bin/python3"
+      - "/opt/python/bin/python3"
     parallelism: 2
     upgradeMode: stateless
     state: running
@@ -92,6 +92,8 @@ spec:
       containers:
         - name: flink-main-container
           env:
+            - name: PYTHONHOME
+              value: "/opt/python"
             - name: PYTHONUNBUFFERED            
               value: "1"
             - name: JAVA_TOOL_OPTIONS

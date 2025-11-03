@@ -14,11 +14,16 @@ RUN set -eux; \
     curl -LsSf --retry 3 --retry-delay 2 https://astral.sh/uv/install.sh -o /tmp/uv-install.sh; \
     sh /tmp/uv-install.sh --version ${UV_VERSION} || sh /tmp/uv-install.sh; \
     ln -s /root/.local/bin/uv /usr/local/bin/uv; \
+    # Install CPython and ensure it is discoverable
     uv python install ${PYTHON_VERSION}; \
     PYBIN=$(uv python find ${PYTHON_VERSION} | head -n1); \
     # Create a dedicated virtualenv for app deps and expose it as system python3
-    "$PYBIN" -m venv /opt/venv; \
-    ln -sf /opt/venv/bin/python3 /usr/local/bin/python3
+    "$PYBIN" -m venv /opt/venv --copies; \
+    # Replace symlink with an actual binary to avoid permission issues for non-root users
+    cp -f /opt/venv/bin/python3 /usr/local/bin/python3; \
+    chmod 0755 /usr/local/bin/python3; \
+    find /opt/venv -type d -exec chmod 0755 {} \; ; \
+    find /opt/venv -type f -name 'python*' -exec chmod 0755 {} \;
 
 COPY docker/build/dev/requirements.txt /tmp/requirements.txt
 RUN export JAVA_HOME=$(dirname $(dirname $(readlink -f $(command -v javac)))) \

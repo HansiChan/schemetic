@@ -56,7 +56,7 @@ spec:
             claimName: flink-data
         - name: minio-ca
           configMap:
-            name: ${CA_CM_NAME:-cm-ca}
+            name: ${CA_CM_NAME}
         - name: truststore-vol
           emptyDir: {}
         - name: bootstrap
@@ -98,9 +98,9 @@ spec:
               value: "-Djavax.net.ssl.trustStore=/etc/ssl/truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
           envFrom:
             - configMapRef:
-                name: ${ENV_CM_NAME:-flink-env}
+                name: ${ENV_CM_NAME}
             - secretRef:
-                name: ${SECRET_NAME:-flink-secret}
+                name: ${SECRET_NAME}
           securityContext:
             seccompProfile:
               type: RuntimeDefault

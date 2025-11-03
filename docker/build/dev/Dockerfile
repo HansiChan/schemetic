@@ -36,7 +36,6 @@ COPY src/app.py /opt/flink/usrcode/app.py
 # Keep the logic simple and explicit.
 ARG FLINK_VERSION=1.20.1
 ARG SCALA_BINARY=2.12
-ARG KAFKA_VERSION=3.8.1
 ARG LOG4J_VERSION=2.17.1
 # Flink shaded Hadoop jar (download from the exact location requested)
 # NOTE: mvnrepository.com is a catalog; use the direct Maven Central jar URL for that page.
@@ -58,7 +57,6 @@ RUN set -eux; \
     download "$PAIMON_FLINK_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_FLINK_JAR_URL")"; \
     download "$PAIMON_S3_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_S3_JAR_URL")"; \
     # Flink and related dependencies from Maven Central (straight URLs, no mirrors)
-    download "$BASE_MVN/org/apache/kafka/connect-api/${KAFKA_VERSION}/connect-api-${KAFKA_VERSION}.jar" "${PLUGINS_DIR}/connect-api-${KAFKA_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-clients/${FLINK_VERSION}/flink-clients-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-clients-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-connector-datagen/${FLINK_VERSION}/flink-connector-datagen-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-connector-datagen-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-dist/${FLINK_VERSION}/flink-dist-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-dist-${FLINK_VERSION}.jar"; \

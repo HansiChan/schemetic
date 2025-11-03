@@ -53,12 +53,8 @@ RUN set -eux; \
     BASE_MVN="https://repo1.maven.org/maven2"; \
     download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
     # Only the three user-specified artifacts (simple and explicit)
-    # 1) flink-shaded-hadoop-3 — try Maven Central, then its canonical host, then Aliyun mirror
-    HADOOP_PATH="org/apache/flink/flink-shaded-hadoop-3/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"; \
-    HADOOP_OUT="${PLUGINS_DIR}/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"; \
-    download "https://repo1.maven.org/maven2/${HADOOP_PATH}" "$HADOOP_OUT" || \
-      download "https://repo.maven.apache.org/maven2/${HADOOP_PATH}" "$HADOOP_OUT" || \
-      download "https://maven.aliyun.com/repository/central/${HADOOP_PATH}" "$HADOOP_OUT"; \
+    # 1) flink-shaded-hadoop-3 — use the Cloudera repository URL provided
+    download "https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar" "${PLUGINS_DIR}/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"; \
     # 2) Paimon (use user-specified snapshot URLs as-is)
     download "$PAIMON_FLINK_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_FLINK_JAR_URL")"; \
     download "$PAIMON_S3_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_S3_JAR_URL")"; \

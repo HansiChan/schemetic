@@ -53,9 +53,7 @@ RUN set -eux; \
     BASE_MVN="https://repo1.maven.org/maven2"; \
     download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
     # Only the three user-specified artifacts (simple and explicit)
-    # 1) flink-shaded-hadoop-3 — use the Cloudera repository URL provided
-    download "https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar" "${PLUGINS_DIR}/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"; \
-    # 2) Paimon (use user-specified snapshot URLs as-is)
+    download "$FLINK_SHADED_HADOOP_URL" "${PLUGINS_DIR}/$(basename "$FLINK_SHADED_HADOOP_URL")"; \
     download "$PAIMON_FLINK_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_FLINK_JAR_URL")"; \
     download "$PAIMON_S3_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_S3_JAR_URL")"; \
     # Other required Flink and Log4j artifacts from Maven Central

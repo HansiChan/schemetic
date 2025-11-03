@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ${CA_CM_NAME:-cm-ca}
-  namespace: ${NAMESPACE}
-data: {}

@@ -17,8 +17,8 @@ spec:
     execution.checkpointing.interval: "10s"
     state.checkpoints.dir: "file:///flink-data/flink-ckpt"
     state.savepoints.dir:  "file:///flink-data/flink-sp"
-    python.client.executable: "/usr/bin/python3"
-    python.executable: "/usr/bin/python3"
+    python.client.executable: "/usr/local/bin/python3"
+    python.executable: "/usr/local/bin/python3"
 
   jobManager:
     resource:
@@ -37,9 +37,9 @@ spec:
     entryClass: org.apache.flink.client.python.PythonDriver
     args:
       - "-py"
-      - "/opt/flink/usrcode/app.py"     
+      - "/opt/flink/usrcode/app.py"
       - "-pyexec"
-      - "/usr/bin/python3"              
+      - "/usr/bin/python3"
     parallelism: 2
     upgradeMode: stateless
     state: running
@@ -63,10 +63,6 @@ spec:
           configMap:
             name: flink-bootstrap
             defaultMode: 0755
-        - name: pycode
-          configMap:
-            name: cm-code
-            defaultMode: 0444
 
       initContainers:
         - name: register-minio-ca
@@ -100,6 +96,11 @@ spec:
               value: "1"
             - name: JAVA_TOOL_OPTIONS
               value: "-Djavax.net.ssl.trustStore=/etc/ssl/truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+          envFrom:
+            - configMapRef:
+                name: ${ENV_CM_NAME:-flink-env}
+            - secretRef:
+                name: ${SECRET_NAME:-flink-secret}
           securityContext:
             seccompProfile:
               type: RuntimeDefault
@@ -116,6 +117,3 @@ spec:
               mountPath: /etc/ssl/truststore
             - name: bootstrap
               mountPath: /opt/bootstrap
-            - name: pycode
-              mountPath: /opt/flink/usrcode
-              readOnly: true

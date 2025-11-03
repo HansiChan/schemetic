@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ${CODE_CM_NAME:-cm-code}
-  namespace: ${NAMESPACE}
-  annotations:
-    managed-by: make-cm.up
-    note: contents are generated from files under k8s/code via `make -C k8s cm.up`
-data: {}

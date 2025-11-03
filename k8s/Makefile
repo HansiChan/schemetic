@@ -5,14 +5,17 @@ K8S_FILE ?= app.yaml
 # Where to store the rendered manifest (ensures down matches up exactly)
 K8S_OUT ?= .rendered.yaml
 
-.PHONY: up down status render ns cm.up cm.down cm.render ca.up ca.down ca.render
+.PHONY: up down status render ns ca.up ca.down ca.render bootstrap.up bootstrap.down bootstrap.render env.up env.down env.render secret.up secret.down secret.render
 
 # Apply with variable substitution using envsubst (from gettext)
+
 up:
 	@set -e; \
 	$(MAKE) ns; \
-	$(MAKE) cm.up; \
 	$(MAKE) ca.up; \
+	$(MAKE) bootstrap.up; \
+	$(MAKE) env.up; \
+	$(MAKE) secret.up; \
 	if command -v envsubst >/dev/null 2>&1; then \
 	  set -o allexport; [ -f .env ] && . ./.env; set +o allexport; \
 	  envsubst < $(K8S_FILE) > $(K8S_OUT); \
@@ -55,33 +58,7 @@ status:
 ns:
 	kubectl get ns $${NAMESPACE:-flink} >/dev/null 2>&1 || kubectl create ns $${NAMESPACE:-flink}
 
-# ---- ConfigMap for Python code ----
-# Directory containing Python source files to mount into the Flink container
-CODE_DIR ?= code
-# Name of the code ConfigMap used by app.yaml (mounted at /opt/flink/usrcode)
-CODE_CM_NAME ?= cm-code
-
-# Render the ConfigMap YAML from files (no apply)
-cm.render:
-	@set -e; \
-	if [ ! -d "$(CODE_DIR)" ]; then echo "Missing $(CODE_DIR) directory"; exit 1; fi; \
-	kubectl create configmap $(CODE_CM_NAME) \
-	  --from-file=$(CODE_DIR) \
-	  -n $${NAMESPACE:-flink} \
-	  --dry-run=client -o yaml
-
-# Create/Update the ConfigMap from local files
-cm.up:
-	@set -e; \
-	if [ ! -d "$(CODE_DIR)" ]; then echo "Missing $(CODE_DIR) directory"; exit 1; fi; \
-	kubectl create configmap $(CODE_CM_NAME) \
-	  --from-file=$(CODE_DIR) \
-	  -n $${NAMESPACE:-flink} \
-	  --dry-run=client -o yaml | kubectl apply -f -
-
-# Delete the ConfigMap
-cm.down:
-	@kubectl delete configmap $(CODE_CM_NAME) -n $${NAMESPACE:-flink} --ignore-not-found
+# (Code ConfigMap no longer used — code is baked into image)
 
 # ---- ConfigMap for CA certs ----
 # Directory (or file) containing CA cert(s). If directory exists and not empty, use it;
@@ -115,3 +92,73 @@ ca.up:
 
 ca.down:
 	@kubectl delete configmap $(CA_CM_NAME) -n $${NAMESPACE:-flink} --ignore-not-found
+
+# ---- ConfigMap for bootstrap script ----
+BOOTSTRAP_DIR ?= bootstrap
+BOOTSTRAP_CM_NAME ?= flink-bootstrap
+
+bootstrap.render:
+	@set -e; \
+	if [ ! -f "$(BOOTSTRAP_DIR)/register-ca.sh" ]; then echo "Missing $(BOOTSTRAP_DIR)/register-ca.sh"; exit 1; fi; \
+	kubectl create configmap $(BOOTSTRAP_CM_NAME) \
+	  --from-file=register-ca.sh=$(BOOTSTRAP_DIR)/register-ca.sh \
+	  -n $${NAMESPACE:-flink} \
+	  --dry-run=client -o yaml
+
+bootstrap.up:
+	@set -e; \
+	if [ ! -f "$(BOOTSTRAP_DIR)/register-ca.sh" ]; then echo "Missing $(BOOTSTRAP_DIR)/register-ca.sh"; exit 1; fi; \
+	kubectl create configmap $(BOOTSTRAP_CM_NAME) \
+	  --from-file=register-ca.sh=$(BOOTSTRAP_DIR)/register-ca.sh \
+	  -n $${NAMESPACE:-flink} \
+	  --dry-run=client -o yaml | kubectl apply -f -
+
+bootstrap.down:
+	@kubectl delete configmap $(BOOTSTRAP_CM_NAME) -n $${NAMESPACE:-flink} --ignore-not-found
+
+# ---- ConfigMap for non-sensitive env ----
+ENV_FILE ?= env/config.env
+ENV_CM_NAME ?= flink-env
+
+env.render:
+	@set -e; \
+	if [ ! -f "$(ENV_FILE)" ]; then echo "Missing $(ENV_FILE)"; exit 1; fi; \
+	kubectl create configmap $(ENV_CM_NAME) \
+	  --from-env-file=$(ENV_FILE) \
+	  -n $${NAMESPACE:-flink} \
+	  --dry-run=client -o yaml
+
+env.up:
+	@set -e; \
+	if [ ! -f "$(ENV_FILE)" ]; then echo "Missing $(ENV_FILE)"; exit 1; fi; \
+	kubectl create configmap $(ENV_CM_NAME) \
+	  --from-env-file=$(ENV_FILE) \
+	  -n $${NAMESPACE:-flink} \
+	  --dry-run=client -o yaml | kubectl apply -f -
+
+env.down:
+	@kubectl delete configmap $(ENV_CM_NAME) -n $${NAMESPACE:-flink} --ignore-not-found
+
+# ---- Secret for sensitive env ----
+SECRET_FILE ?= env/secret.env
+SECRET_NAME ?= flink-secret
+
+secret.render:
+	@set -e; \
+	if [ ! -f "$(SECRET_FILE)" ]; then echo "Missing $(SECRET_FILE)"; exit 1; fi; \
+	kubectl create secret generic $(SECRET_NAME) \
+	  --from-env-file=$(SECRET_FILE) \
+	  -n $${NAMESPACE:-flink} \
+	  --dry-run=client -o yaml
+
+secret.up:
+	@set -e; \
+	if [ ! -f "$(SECRET_FILE)" ]; then echo "Missing $(SECRET_FILE)"; exit 1; fi; \
+	kubectl create secret generic $(SECRET_NAME) \
+	  --from-env-file=$(SECRET_FILE) \
+	  -n $${NAMESPACE:-flink} \
+	  --dry-run=client -o yaml | kubectl apply -f -
+
+secret.down:
+	@kubectl delete secret generic $(SECRET_NAME) -n $${NAMESPACE:-flink} --ignore-not-found || \
+	  kubectl delete secret $(SECRET_NAME) -n $${NAMESPACE:-flink} --ignore-not-found

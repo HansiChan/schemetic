@@ -61,7 +61,6 @@ RUN set -eux; \
     fetch "$BASE_MVN/org/apache/flink/flink-python/${FLINK_VERSION}/flink-python-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-python-${FLINK_VERSION}.jar"; \
     fetch "$BASE_MVN/org/apache/flink/flink-s3-fs-hadoop/${FLINK_VERSION}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar"; \
     fetch "$BASE_MVN/org/apache/flink/flink-scala_${SCALA_BINARY}/${FLINK_VERSION}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar"; \
-    fetch "$BASE_MVN/org/apache/flink/flink-shaded-hadoop-3/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar" "${PLUGINS_DIR}/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"; \
     fetch "$BASE_MVN/org/apache/flink/flink-sql-gateway/${FLINK_VERSION}/flink-sql-gateway-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-sql-gateway-${FLINK_VERSION}.jar"; \
     fetch "$BASE_MVN/org/apache/flink/flink-table-api-java-uber/${FLINK_VERSION}/flink-table-api-java-uber-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-api-java-uber-${FLINK_VERSION}.jar"; \
     fetch "$BASE_MVN/org/apache/flink/flink-table-planner-loader/${FLINK_VERSION}/flink-table-planner-loader-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-planner-loader-${FLINK_VERSION}.jar"; \

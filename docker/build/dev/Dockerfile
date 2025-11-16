@@ -38,6 +38,15 @@ RUN mkdir -p /opt/flink/sql /opt/flink/usrcode /opt/flink/flink-plugins
 COPY src/sql/pipeline.sql /opt/flink/sql/pipeline.sql
 COPY src/app.py /opt/flink/usrcode/app.py
 
+# Pre-bake truststore with MinIO CA so runtime pods do not need init containers
+COPY docker/build/dev/bootstrap/register-ca.sh /opt/bootstrap/register-ca.sh
+COPY docker/build/dev/minio-ca.crt /tmp/minio-ca.crt
+RUN set -eux; \
+    chmod +x /opt/bootstrap/register-ca.sh; \
+    mkdir -p /etc/ssl/truststore; \
+    CA_FILE=/tmp/minio-ca.crt TARGET_TRUSTSTORE=/etc/ssl/truststore/cacerts STOREPASS=changeit /opt/bootstrap/register-ca.sh; \
+    rm -f /tmp/minio-ca.crt
+
 # Download required Flink plugins and dependencies into /opt/flink/flink-plugins
 # Keep the logic simple and explicit.
 ARG FLINK_VERSION=1.20.1

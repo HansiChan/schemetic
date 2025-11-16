@@ -54,40 +54,6 @@ spec:
         - name: flink-volume
           persistentVolumeClaim:
             claimName: flink-data
-        - name: minio-ca
-          configMap:
-            name: cm-ca
-        - name: truststore-vol
-          emptyDir: {}
-        - name: bootstrap
-          configMap:
-            name: flink-bootstrap
-            defaultMode: 0755
-
-      initContainers:
-        - name: register-minio-ca
-          image: ${DEV_IMAGE}
-          securityContext:
-            runAsUser: 0
-          command: ["/bin/bash","-lc"]
-          env:
-            - name: CA_FILE
-              value: "/ca/minio-ca.crt"
-            - name: TARGET_TRUSTSTORE
-              value: "/truststore/cacerts"
-            - name: STOREPASS
-              value: "changeit"
-          args:
-            - |
-              set -e
-              /opt/bootstrap/register-ca.sh
-          volumeMounts:
-            - name: minio-ca
-              mountPath: /ca
-            - name: truststore-vol
-              mountPath: /truststore
-            - name: bootstrap
-              mountPath: /opt/bootstrap
 
       containers:
         - name: flink-main-container
@@ -111,9 +77,3 @@ spec:
           volumeMounts:
             - name: flink-volume
               mountPath: /flink-data
-            - name: minio-ca
-              mountPath: /ca
-            - name: truststore-vol
-              mountPath: /etc/ssl/truststore
-            - name: bootstrap
-              mountPath: /opt/bootstrap

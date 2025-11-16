@@ -56,11 +56,9 @@ ARG LOG4J_VERSION=2.17.1
 # NOTE: mvnrepository.com is a catalog; use the direct Maven Central jar URL for that page.
 ARG FLINK_SHADED_HADOOP_URL="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"
 
-# Apache Paimon — use the exact snapshot URLs requested by the user
+# Apache Paimon — default to the latest released jars published to Maven Central
 ARG PAIMON_FLINK_JAR_URL="https://repository.apache.org/content/groups/snapshots/org/apache/paimon/paimon-flink-1.20/1.4-SNAPSHOT/paimon-s3-1.4-20251114.003138-60.jar"
 ARG PAIMON_S3_JAR_URL="https://repository.apache.org/content/groups/snapshots/org/apache/paimon/paimon-s3/1.4-SNAPSHOT/paimon-s3-1.4-20251114.003138-60.jar"
-ARG PAIMON_FLINK_MAJOR=1.20
-ARG PAIMON_VERSION=1.4
 
 RUN set -eux; \
     PLUGINS_DIR=/opt/flink/lib; \

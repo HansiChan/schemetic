@@ -52,9 +52,9 @@ RUN set -eux; \
 ARG FLINK_VERSION=1.20.1
 ARG SCALA_BINARY=2.12
 ARG LOG4J_VERSION=2.17.1
-# Flink shaded Hadoop jar (download from the exact location requested)
-# NOTE: mvnrepository.com is a catalog; use the direct Maven Central jar URL for that page.
-ARG FLINK_SHADED_HADOOP_URL="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"
+# Flink shaded Hadoop jar（使用和其他依赖一致的模板化 URL）
+ARG FLINK_SHADED_HADOOP_VERSION=3.1.1.7.2.9.0-173-9.0
+ARG FLINK_SHADED_HADOOP_BASE="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3"
 
 # Apache Paimon — download released jars from Maven Central just like other deps
 ARG PAIMON_VERSION=1.3.0
@@ -65,7 +65,8 @@ RUN set -eux; \
     BASE_MVN="https://repo1.maven.org/maven2"; \
     download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
     # Only the three user-specified artifacts (simple and explicit)
-    download "$FLINK_SHADED_HADOOP_URL" "${PLUGINS_DIR}/$(basename "$FLINK_SHADED_HADOOP_URL")"; \
+    download "$FLINK_SHADED_HADOOP_BASE/${FLINK_SHADED_HADOOP_VERSION}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar" \
+        "${PLUGINS_DIR}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/paimon/paimon-flink-1.20/${PAIMON_VERSION}/paimon-flink-1.20-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-flink-1.20-${PAIMON_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/paimon/paimon-s3/${PAIMON_VERSION}/paimon-s3-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-s3-${PAIMON_VERSION}.jar"; \
     # Other required Flink and Log4j artifacts from Maven Central

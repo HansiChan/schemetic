@@ -56,9 +56,8 @@ ARG LOG4J_VERSION=2.17.1
 # NOTE: mvnrepository.com is a catalog; use the direct Maven Central jar URL for that page.
 ARG FLINK_SHADED_HADOOP_URL="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3/3.1.1.7.2.9.0-173-9.0/flink-shaded-hadoop-3-3.1.1.7.2.9.0-173-9.0.jar"
 
-# Apache Paimon — default to the latest released jars published to Maven Central
-ARG PAIMON_FLINK_JAR_URL="https://repository.apache.org/content/groups/snapshots/org/apache/paimon/paimon-flink-1.20/1.4-SNAPSHOT/paimon-s3-1.4-20251114.003138-60.jar"
-ARG PAIMON_S3_JAR_URL="https://repository.apache.org/content/groups/snapshots/org/apache/paimon/paimon-s3/1.4-SNAPSHOT/paimon-s3-1.4-20251114.003138-60.jar"
+# Apache Paimon — download released jars from Maven Central just like other deps
+ARG PAIMON_VERSION=1.3.0
 
 RUN set -eux; \
     PLUGINS_DIR=/opt/flink/lib; \
@@ -67,8 +66,8 @@ RUN set -eux; \
     download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
     # Only the three user-specified artifacts (simple and explicit)
     download "$FLINK_SHADED_HADOOP_URL" "${PLUGINS_DIR}/$(basename "$FLINK_SHADED_HADOOP_URL")"; \
-    download "$PAIMON_FLINK_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_FLINK_JAR_URL")"; \
-    download "$PAIMON_S3_JAR_URL" "${PLUGINS_DIR}/$(basename "$PAIMON_S3_JAR_URL")"; \
+    download "$BASE_MVN/org/apache/paimon/paimon-flink-1.20/${PAIMON_VERSION}/paimon-flink-1.20-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-flink-1.20-${PAIMON_VERSION}.jar"; \
+    download "$BASE_MVN/org/apache/paimon/paimon-s3/${PAIMON_VERSION}/paimon-s3-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-s3-${PAIMON_VERSION}.jar"; \
     # Other required Flink and Log4j artifacts from Maven Central
     download "$BASE_MVN/org/apache/flink/flink-clients/${FLINK_VERSION}/flink-clients-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-clients-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-connector-datagen/${FLINK_VERSION}/flink-connector-datagen-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-connector-datagen-${FLINK_VERSION}.jar"; \

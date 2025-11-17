@@ -1,0 +1,64 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - app-config.yaml
+  - app.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: flink-env
+    envs:
+      - env/config.env
+
+secretGenerator:
+  - name: flink-secret
+    envs:
+      - env/secret.env
+
+vars:
+  - name: NAME
+    objref:
+      apiVersion: v1
+      kind: ConfigMap
+      name: flink-app-settings
+    fieldref:
+      fieldpath: data.NAME
+  - name: NAMESPACE
+    objref:
+      apiVersion: v1
+      kind: ConfigMap
+      name: flink-app-settings
+    fieldref:
+      fieldpath: data.NAMESPACE
+  - name: FLINK_VERSION
+    objref:
+      apiVersion: v1
+      kind: ConfigMap
+      name: flink-app-settings
+    fieldref:
+      fieldpath: data.FLINK_VERSION
+  - name: DEV_IMAGE
+    objref:
+      apiVersion: v1
+      kind: ConfigMap
+      name: flink-app-settings
+    fieldref:
+      fieldpath: data.DEV_IMAGE
+  - name: FLINK_DEPLOY_MODE
+    objref:
+      apiVersion: v1
+      kind: ConfigMap
+      name: flink-app-settings
+    fieldref:
+      fieldpath: data.FLINK_DEPLOY_MODE
+  - name: SERVICE_ACCOUNT
+    objref:
+      apiVersion: v1
+      kind: ConfigMap
+      name: flink-app-settings
+    fieldref:
+      fieldpath: data.SERVICE_ACCOUNT

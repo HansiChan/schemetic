@@ -1,15 +1,17 @@
-FROM flink:1.20.1-scala_2.12 AS flink-dist
-
 FROM amazonlinux:2023
 
 # Build-time versions
 ARG PYTHON_VERSION=3.11
 ARG UV_VERSION=v0.4.20
+ARG FLINK_VERSION=1.20.1
+ARG SCALA_BINARY=2.12
+ARG FLINK_TGZ_URL="https://archive.apache.org/dist/flink/flink-${FLINK_VERSION}/flink-${FLINK_VERSION}-bin-scala_${SCALA_BINARY}.tgz"
+ARG FLINK_DOCKER_REF="1.20"
 
-# Base tools (amazonlinux uses dnf/yum)
+# Base tools and Corretto JDK
 RUN set -eux; \
     dnf -y update && \
-    dnf -y install \
+    dnf -y install --setopt=install_weak_deps=False \
         ca-certificates \
         curl \
         findutils \
@@ -19,29 +21,40 @@ RUN set -eux; \
         make \
         tar \
         which \
+        glibc-langpack-en \
+        libffi-devel \
+        openssl-devel \
+        bzip2-devel \
+        xz \
+        zlib-devel \
         java-17-amazon-corretto-headless && \
     dnf clean all && \
     rm -rf /var/cache/dnf
 
-# Bring in the Flink distribution from the official image
-COPY --from=flink-dist /opt/flink /opt/flink
-COPY --from=flink-dist /docker-entrypoint.sh /docker-entrypoint.sh
-COPY --from=flink-dist /docker-entrypoint.d /docker-entrypoint.d
+# Download Flink distribution and docker entrypoint scripts
+RUN set -eux; \
+    curl -fL --retry 3 --retry-delay 2 -o /tmp/flink.tgz "${FLINK_TGZ_URL}"; \
+    mkdir -p /opt; \
+    tar -xzf /tmp/flink.tgz -C /opt; \
+    rm -f /tmp/flink.tgz; \
+    mv /opt/flink-${FLINK_VERSION} /opt/flink; \
+    curl -fL --retry 3 --retry-delay 2 -o /docker-entrypoint.sh "https://raw.githubusercontent.com/apache/flink-docker/release-${FLINK_DOCKER_REF}/docker-entrypoint.sh"; \
+    chmod +x /docker-entrypoint.sh; \
+    mkdir -p /docker-entrypoint.d
 ENV PATH="/opt/flink/bin:${PATH}"
+ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=cpp
 
 # Install uv and Python dependencies via uv
 RUN set -eux; \
     curl -LsSf --retry 3 --retry-delay 2 https://astral.sh/uv/install.sh -o /tmp/uv-install.sh; \
     sh /tmp/uv-install.sh --version ${UV_VERSION} || sh /tmp/uv-install.sh; \
     ln -s /root/.local/bin/uv /usr/local/bin/uv; \
-    # Install CPython via uv and relocate it to a world-readable path
     uv python install ${PYTHON_VERSION}; \
     PYBIN=$(uv python find ${PYTHON_VERSION} | head -n1); \
     PYROOT=$(dirname $(dirname "$PYBIN")); \
     cp -a "$PYROOT" /opt/python; \
     chmod -R a+rx /opt/python; \
     ln -sf /opt/python/bin/python3 /usr/local/bin/python3; \
-    # Create a dedicated virtualenv for app deps using the relocated interpreter
     /opt/python/bin/python3 -m venv /opt/venv; \
     find /opt/venv -type d -exec chmod 0755 {} \; ; \
     find /opt/venv -type f -name 'python*' -exec chmod 0755 {} \;
@@ -68,15 +81,9 @@ RUN set -eux; \
     rm -f /tmp/minio-ca.crt
 
 # Download required Flink plugins and dependencies into /opt/flink/flink-plugins
-# Keep the logic simple and explicit.
-ARG FLINK_VERSION=1.20.1
-ARG SCALA_BINARY=2.12
 ARG LOG4J_VERSION=2.17.1
-# Flink shaded Hadoop jar（使用和其他依赖一致的模板化 URL）
 ARG FLINK_SHADED_HADOOP_VERSION=3.1.1.7.2.9.0-173-9.0
 ARG FLINK_SHADED_HADOOP_BASE="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3"
-
-# Apache Paimon — download released jars from Maven Central just like other deps
 ARG PAIMON_VERSION=1.3.0
 
 RUN set -eux; \
@@ -84,12 +91,10 @@ RUN set -eux; \
     mkdir -p "${PLUGINS_DIR}"; \
     BASE_MVN="https://repo1.maven.org/maven2"; \
     download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
-    # Only the three user-specified artifacts (simple and explicit)
     download "$FLINK_SHADED_HADOOP_BASE/${FLINK_SHADED_HADOOP_VERSION}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar" \
         "${PLUGINS_DIR}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/paimon/paimon-flink-1.20/${PAIMON_VERSION}/paimon-flink-1.20-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-flink-1.20-${PAIMON_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/paimon/paimon-s3/${PAIMON_VERSION}/paimon-s3-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-s3-${PAIMON_VERSION}.jar"; \
-    # Other required Flink and Log4j artifacts from Maven Central
     download "$BASE_MVN/org/apache/flink/flink-clients/${FLINK_VERSION}/flink-clients-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-clients-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-connector-datagen/${FLINK_VERSION}/flink-connector-datagen-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-connector-datagen-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-json/${FLINK_VERSION}/flink-json-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-json-${FLINK_VERSION}.jar"; \

@@ -4,6 +4,8 @@ include ../shared/build.env
 
 include ../shared/build.mk
 
+DOCKERFILE ?= Dockerfile
+
 # Build the app image using args from build.env
 .PHONY: build.app
 build.app:
@@ -18,7 +20,7 @@ build.app:
 	  echo "[info] IMAGE not provided; defaulting to $$IMG"; \
 	fi; \
 	set -o allexport; [ -f build.env ] && . ./build.env; set +o allexport; \
-	docker build -f Dockerfile \
+	docker build -f ${DOCKERFILE} \
 	  --build-arg PYTHON_VERSION=$${PYTHON_VERSION} \
 	  --build-arg UV_VERSION=$${UV_VERSION} \
 	  --build-arg LABEL_SOURCE="$${LABEL_SOURCE}" \

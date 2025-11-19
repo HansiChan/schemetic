@@ -1,7 +1,4 @@
-ARG FLINK_VERSION=1.20.2
-ARG SCALA_BINARY=2.12
-FROM flink:${FLINK_VERSION}-scala_${SCALA_BINARY} AS flink-dist
-
+# Amazon Linux 2023 base image with Flink installed locally
 FROM amazonlinux:2023
 
 # Build-time versions
@@ -9,77 +6,67 @@ ARG PYTHON_VERSION=3.11
 ARG UV_VERSION=v0.4.20
 ARG FLINK_VERSION=1.20.2
 ARG SCALA_BINARY=2.12
-ARG LOG4J_VERSION=2.17.1
-ARG FLINK_SHADED_HADOOP_VERSION=3.1.1.7.2.9.0-173-9.0
-ARG FLINK_SHADED_HADOOP_BASE="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3"
-ARG PAIMON_VERSION=1.3.0
-ARG GOSU_VERSION=1.17
 
-ENV LANG=en_US.UTF-8 \
-    LC_ALL=en_US.UTF-8 \
-    JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto \
-    FLINK_HOME=/opt/flink \
-    PATH=/opt/flink/bin:/opt/venv/bin:/opt/python/bin:/usr/local/bin:$PATH
-
-# Base OS packages + Java toolchain + build deps
-RUN set -eux; \
-    dnf -y update; \
-    dnf -y install \
-        shadow-utils \
-        tar gzip bzip2 xz \
-        unzip zip \
-        findutils \
-        util-linux \
-        which \
-        git \
-        jq \
-        ca-certificates \
-        hostname \
-        glibc-langpack-en \
-        java-17-amazon-corretto-headless \
-        gcc gcc-c++ make \
-        python3 python3-pip \
-    ; \
-    dnf clean all; \
-    rm -rf /var/cache/dnf
-
-# Install gosu for drop_privs logic used by the entrypoint
-RUN set -eux; \
-    arch="$(uname -m)"; \
-    curl -fsSL "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${arch}" -o /usr/local/bin/gosu; \
-    chmod +x /usr/local/bin/gosu
-
-# Create flink user/group used by the entrypoint script
-RUN set -eux; \
-    groupadd -r flink; \
-    useradd -r -g flink flink
-
-# Copy Flink distribution from the upstream image for the requested version
-COPY --from=flink-dist /opt/flink ${FLINK_HOME}
-RUN chown -R flink:flink ${FLINK_HOME}
-
-# Reuse the Flink entrypoint script from the upstream distribution
-COPY --from=flink-dist /docker-entrypoint.sh /docker-entrypoint.sh
+# Install base tools
+RUN dnf install -y --allowerasing \
+    curl ca-certificates findutils gcc gcc-c++ make tar gzip shadow-utils \
+    java-17-amazon-corretto-devel \
+    && dnf clean all
 
 # Install uv and Python dependencies via uv
 RUN set -eux; \
     curl -LsSf --retry 3 --retry-delay 2 https://astral.sh/uv/install.sh -o /tmp/uv-install.sh; \
     sh /tmp/uv-install.sh --version ${UV_VERSION} || sh /tmp/uv-install.sh; \
     ln -s /root/.local/bin/uv /usr/local/bin/uv; \
+    # Install CPython via uv and relocate it to a world-readable path
     uv python install ${PYTHON_VERSION}; \
-    PYBIN="$(uv python find ${PYTHON_VERSION} | head -n1)"; \
-    PYROOT="$(dirname "$(dirname "$PYBIN")")"; \
+    PYBIN=$(uv python find ${PYTHON_VERSION} | head -n1); \
+    PYROOT=$(dirname $(dirname "$PYBIN")); \
     cp -a "$PYROOT" /opt/python; \
     chmod -R a+rx /opt/python; \
     ln -sf /opt/python/bin/python3 /usr/local/bin/python3; \
+    # Create a dedicated virtualenv for app deps using the relocated interpreter
     /opt/python/bin/python3 -m venv /opt/venv; \
     find /opt/venv -type d -exec chmod 0755 {} \; ; \
     find /opt/venv -type f -name 'python*' -exec chmod 0755 {} \;
 
+# Install Flink from local tarball or download if not available
+# The build context will provide docker/build/dev/local-flink.tgz if available
+COPY docker/build/dev/local-flink.tgz /tmp/local-flink.tgz
+RUN set -eux; \
+    mkdir -p /opt; \
+    if [ -s /tmp/local-flink.tgz ]; then \
+        echo "Installing Flink from local tarball..."; \
+        tar -xzf /tmp/local-flink.tgz -C /opt; \
+    else \
+        echo "Downloading Flink ${FLINK_VERSION}..."; \
+        curl -fL --retry 3 --retry-delay 2 \
+            "https://archive.apache.org/dist/flink/flink-${FLINK_VERSION}/flink-${FLINK_VERSION}-bin-scala_${SCALA_BINARY}.tgz" \
+            -o /tmp/flink.tgz; \
+        tar -xzf /tmp/flink.tgz -C /opt; \
+        rm /tmp/flink.tgz; \
+    fi; \
+    rm -f /tmp/local-flink.tgz; \
+    # Find the extracted directory and rename it to /opt/flink
+    FLINK_DIR=$(find /opt -maxdepth 1 -name "flink-*" -type d | head -n1); \
+    if [ "$FLINK_DIR" != "/opt/flink" ]; then \
+        mv "$FLINK_DIR" /opt/flink; \
+    fi; \
+    chmod -R a+rx /opt/flink
+
+# Set FLINK_HOME
+ENV FLINK_HOME=/opt/flink
+ENV PATH=$FLINK_HOME/bin:$PATH
+
+# Install Python dependencies
 COPY docker/build/dev/requirements.txt /tmp/requirements.txt
-RUN export JAVA_HOME=${JAVA_HOME} \
+RUN export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto \
     && echo "Using JAVA_HOME=$JAVA_HOME" \
-    && uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt
+    && uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt \
+    && echo "Upgrading vulnerable packages..." \
+    && uv pip install --python /opt/venv/bin/python3 --no-cache --upgrade \
+        "protobuf>=4.25.8" \
+        "pyarrow>=14.0.1"
 
 # Prepare directories: SQL, runtime code, and (empty) plugins
 RUN mkdir -p /opt/flink/sql /opt/flink/usrcode /opt/flink/flink-plugins
@@ -97,12 +84,18 @@ RUN set -eux; \
     CA_FILE=/tmp/minio-ca.crt TARGET_TRUSTSTORE=/etc/ssl/truststore/cacerts STOREPASS=changeit /opt/bootstrap/register-ca.sh; \
     rm -f /tmp/minio-ca.crt
 
-# Download required Flink plugins and dependencies into /opt/flink/flink-plugins
+# Download required Flink plugins and dependencies into /opt/flink/lib
+ARG LOG4J_VERSION=2.17.1
+ARG FLINK_SHADED_HADOOP_VERSION=3.1.1.7.2.9.0-173-9.0
+ARG FLINK_SHADED_HADOOP_BASE="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3"
+ARG PAIMON_VERSION=1.3.0
+
 RUN set -eux; \
     PLUGINS_DIR=/opt/flink/lib; \
     mkdir -p "${PLUGINS_DIR}"; \
     BASE_MVN="https://repo1.maven.org/maven2"; \
     download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
+    # Download all required jars
     download "$FLINK_SHADED_HADOOP_BASE/${FLINK_SHADED_HADOOP_VERSION}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar" \
         "${PLUGINS_DIR}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/paimon/paimon-flink-1.20/${PAIMON_VERSION}/paimon-flink-1.20-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-flink-1.20-${PAIMON_VERSION}.jar"; \
@@ -123,12 +116,16 @@ RUN set -eux; \
     download "$BASE_MVN/org/apache/logging/log4j/log4j-core/${LOG4J_VERSION}/log4j-core-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-core-${LOG4J_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/logging/log4j/log4j-slf4j-impl/${LOG4J_VERSION}/log4j-slf4j-impl-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-slf4j-impl-${LOG4J_VERSION}.jar"
 
+# Create flink user for K8s compatibility
+RUN groupadd --gid=9999 flink && \
+    useradd --uid=9999 --gid=9999 -m -s /bin/bash flink && \
+    chown -R flink:flink /opt/flink
+
+WORKDIR /opt/flink
+USER flink
+
 # Traceability (generic, overridable)
 ARG LABEL_SOURCE=""
 ARG LABEL_BASE_NAME="amazonlinux:2023"
 LABEL org.opencontainers.image.source="${LABEL_SOURCE}" \
       org.opencontainers.image.base.name="${LABEL_BASE_NAME}"
-
-WORKDIR /opt/flink
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["help"]

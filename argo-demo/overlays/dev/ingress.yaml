@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: demo-ingress
+  annotations:
+    cert-manager.io/issuer: npe-acme-clusterissuer
+    cert-manager.io/issuer-kind: ClusterIssuer
+  namespace: dev-flink-demo
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: ds01-flink.venetianqa.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: dev-demo-flinkdeployment-rest
+                port:
+                  number: 8081
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - ds01-flink.venetianqa.local
+      secretName: dev-demo-ingress-tls

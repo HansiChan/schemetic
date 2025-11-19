@@ -1,4 +1,4 @@
-FROM flink:1.20.1-scala_2.12
+FROM flink:1.20.2-scala_2.12
 
 # Build-time versions
 ARG PYTHON_VERSION=3.11
@@ -29,7 +29,11 @@ RUN set -eux; \
 COPY docker/build/dev/requirements.txt /tmp/requirements.txt
 RUN export JAVA_HOME=$(dirname $(dirname $(readlink -f $(command -v javac)))) \
     && echo "Using JAVA_HOME=$JAVA_HOME" \
-    && uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt
+    && uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt \
+    && echo "Upgrading vulnerable packages..." \
+    && uv pip install --python /opt/venv/bin/python3 --no-cache --upgrade \
+        "protobuf>=4.25.8" \
+        "pyarrow>=14.0.1"
 
 # Prepare directories: SQL, runtime code, and (empty) plugins
 RUN mkdir -p /opt/flink/sql /opt/flink/usrcode /opt/flink/flink-plugins
@@ -49,7 +53,7 @@ RUN set -eux; \
 
 # Download required Flink plugins and dependencies into /opt/flink/flink-plugins
 # Keep the logic simple and explicit.
-ARG FLINK_VERSION=1.20.1
+ARG FLINK_VERSION=1.20.2
 ARG SCALA_BINARY=2.12
 ARG LOG4J_VERSION=2.17.1
 # Flink shaded Hadoop jar（使用和其他依赖一致的模板化 URL）
@@ -80,12 +84,7 @@ RUN set -eux; \
     download "$BASE_MVN/org/apache/flink/flink-sql-gateway/${FLINK_VERSION}/flink-sql-gateway-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-sql-gateway-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-table-api-java-uber/${FLINK_VERSION}/flink-table-api-java-uber-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-api-java-uber-${FLINK_VERSION}.jar"; \
     download "$BASE_MVN/org/apache/flink/flink-table-planner-loader/${FLINK_VERSION}/flink-table-planner-loader-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-planner-loader-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-table-runtime/${FLINK_VERSION}/flink-table-runtime-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-runtime-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/logging/log4j/log4j-1.2-api/${LOG4J_VERSION}/log4j-1.2-api-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-1.2-api-${LOG4J_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/logging/log4j/log4j-api/${LOG4J_VERSION}/log4j-api-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-api-${LOG4J_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/logging/log4j/log4j-core/${LOG4J_VERSION}/log4j-core-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-core-${LOG4J_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/logging/log4j/log4j-slf4j-impl/${LOG4J_VERSION}/log4j-slf4j-impl-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-slf4j-impl-${LOG4J_VERSION}.jar"
-
+    download "$BASE_MVN/org/apache/flink/flink-table-runtime/${FLINK_VERSION}/flink-table-runtime-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-runtime-${FLINK_VERSION}.jar"; 
 # Traceability (generic, overridable)
 ARG LABEL_SOURCE=""
 ARG LABEL_BASE_NAME="flink:1.20.1-scala_2.12"

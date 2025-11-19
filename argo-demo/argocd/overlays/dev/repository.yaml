@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: flink-demo-demo-repo
+  namespace: openshift-gitops
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  insecureIgnoreHostKey: "true"
+  type: git
+  url: git@devops.Venetianqa.local:22/DevOpsCollection/flink-demo/_git/demo

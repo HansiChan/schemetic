@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flink-demo-demo
+  namespace: openshift-gitops
+spec:
+  # The project the application belongs to.
+  project: dev
+
+  # Source of the application manifests
+  source:
+    repoURL: git@devops.Venetianqa.local:22/DevOpsCollection/flink-demo/_git/demo
+    targetRevision: develop
+    path: overlays/dev
+
+  # Destination cluster and namespace to deploy the application
+  destination:
+    # The namespace will only be set for namespace-scoped resources
+    # that have not set a value for .metadata.namespace
+    namespace: dev-flink-demo

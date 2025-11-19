@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-flink-s3-paimon-cm
+data:
+  CHECKPOINT_INTERVAL: 10 s
+  PAIMON_CATALOG: paimon_catalog
+  PAIMON_DATABASE: demo
+  PAIMON_WAREHOUSE: s3://flink-demo/
+  PIPELINE_NAME: pyflink-paimon-page-views-per-minute
+  S3_ENDPOINT: https://minio.minio-tenant.svc.cluster.local
+  S3_PATH_STYLE: 'true'

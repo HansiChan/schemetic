@@ -1,5 +1,10 @@
+PLATFORM_FLAG :=
+ifneq ($(strip ${DOCKER_PLATFORM}),)
+PLATFORM_FLAG := --platform ${DOCKER_PLATFORM}
+endif
+
 build:
-	@${CONTAINER_CLI} build . -f Dockerfile -t ${IMAGE_NAME} \
+	@${CONTAINER_CLI} build ${PLATFORM_FLAG} -f Dockerfile -t ${IMAGE_NAME} \
 		--build-arg base_image_repo=${BASE_IMAGE_REPO} \
 		--build-arg base_image_tag=${BASE_IMAGE_TAG} \
 		--build-arg app_home=${APP_HOME} \
@@ -18,6 +23,7 @@ build:
 		--build-arg python_version=${PYTHON_VERSION} \
 		--build-arg alpine_version=${ALPINE_VERSION} \
 		--build-arg created_at=${CREATED_AT} \
+		. \
 		&& ${CONTAINER_CLI} image tag ${IMAGE_NAME} ${IMAGE_REGISTRY_NAME}
 
 push:

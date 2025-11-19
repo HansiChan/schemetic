@@ -14,3 +14,4 @@ log
 .cipher
 .data
 */make.env/*.local.env
+docker/build/dev/local-flink.tgz

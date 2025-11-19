@@ -19,8 +19,18 @@ build.app:
 	  fi; \
 	  echo "[info] IMAGE not provided; defaulting to $$IMG"; \
 	fi; \
+	LOCAL_FLINK_TMP="local-flink.tgz"; \
+	cleanup() { rm -f "$$LOCAL_FLINK_TMP"; }; \
+	trap cleanup EXIT; \
+	if [ -n "${LOCAL_FLINK_TGZ}" ] && [ -f "${LOCAL_FLINK_TGZ}" ]; then \
+	  echo "[info] Using local Flink tarball ${LOCAL_FLINK_TGZ}"; \
+	  cp "${LOCAL_FLINK_TGZ}" "$$LOCAL_FLINK_TMP"; \
+	else \
+	  : > "$$LOCAL_FLINK_TMP"; \
+	fi; \
 	set -o allexport; [ -f build.env ] && . ./build.env; set +o allexport; \
-	docker build -f ${DOCKERFILE} \
+	PLATFORM_FLAG=""; \
+	docker build $$PLATFORM_FLAG -f ${DOCKERFILE} \
 	  --build-arg PYTHON_VERSION=$${PYTHON_VERSION} \
 	  --build-arg UV_VERSION=$${UV_VERSION} \
 	  --build-arg LABEL_SOURCE="$${LABEL_SOURCE}" \

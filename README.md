@@ -34,6 +34,8 @@
   - `make -C docker/build/dev build.app`
   - If `IMAGE` is not provided, the tag defaults to `${IMAGE_REPO_ROOT}/${PROJECT_NAME}_${APP_NAME}:dev` from `docker/make.env/common.env`.
   - Set a custom tag with `IMAGE=<repo/name:tag>`.
+- Builds now default to `linux/amd64` (`DOCKER_PLATFORM` in `docker/make.env/common.env`); override by exporting `DOCKER_PLATFORM=<platform>` or setting it in `docker/make.env/common.local.env` when you need a different architecture (e.g., `linux/arm64`).
+- Need an Amazon Linux 2023 base with Flink 1.20.2? Pass `DOCKERFILE=Dockerfile.amazonlinux2023` to the Make target (`make -C docker/build/dev DOCKERFILE=Dockerfile.amazonlinux2023 build.app`) or call Docker directly with `-f docker/build/dev/Dockerfile.amazonlinux2023`.
 - Or build directly with Docker:
   - `docker build -f docker/build/dev/Dockerfile -t <repo/name:tag> .`
 

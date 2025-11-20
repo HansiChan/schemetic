@@ -1,4 +1,4 @@
-FROM flink:1.20.2-scala_2.12
+FROM flink:1.20.1-scala_2.12
 
 # Build-time versions
 ARG PYTHON_VERSION=3.11
@@ -53,7 +53,7 @@ RUN set -eux; \
 
 # Download required Flink plugins and dependencies into /opt/flink/flink-plugins
 # Keep the logic simple and explicit.
-ARG FLINK_VERSION=1.20.2
+ARG FLINK_VERSION=1.20.1
 ARG SCALA_BINARY=2.12
 ARG LOG4J_VERSION=2.17.1
 # Flink shaded Hadoop jar（使用和其他依赖一致的模板化 URL）

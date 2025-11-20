@@ -4,7 +4,7 @@ FROM amazonlinux:2023
 # Build-time versions
 ARG PYTHON_VERSION=3.11
 ARG UV_VERSION=v0.4.20
-ARG FLINK_VERSION=1.20.2
+ARG FLINK_VERSION=1.20.1
 ARG SCALA_BINARY=2.12
 
 # Install base tools

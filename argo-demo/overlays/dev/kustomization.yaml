@@ -17,17 +17,6 @@ resources:
   - s3-paimon-cm.yaml
   - minio-secret.yaml
 
-
-patches:
-  - path: task-manager.yaml
-    target: 
-      kind: FlinkDeployment
-      name: demo-flinkdeployment
-  - path: job.yaml
-    target:
-      kind: FlinkDeployment
-      name: demo-flinkdeployment
-
 patchesJson6902:
   - target:
       group: flink.apache.org
@@ -41,3 +30,9 @@ patchesJson6902:
       kind: FlinkDeployment
       name: dev-demo-flinkdeployment
     path: patch-pvc-claim-name.json
+  - target:
+      group: flink.apache.org
+      version: v1beta1
+      kind: FlinkDeployment
+      name: dev-demo-flinkdeployment
+    path: patch-serviceaccount.json

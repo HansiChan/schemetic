@@ -11,3 +11,5 @@ labels:
 
 resources:
   - flinkdeployment.yaml
+  - service-acccount.yaml
+  - rbac.yaml

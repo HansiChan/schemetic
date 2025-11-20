@@ -51,40 +51,48 @@ RUN set -eux; \
     CA_FILE=/tmp/minio-ca.crt TARGET_TRUSTSTORE=/etc/ssl/truststore/cacerts STOREPASS=changeit /opt/bootstrap/register-ca.sh; \
     rm -f /tmp/minio-ca.crt
 
-# Download required Flink plugins and dependencies into /opt/flink/flink-plugins
-# Keep the logic simple and explicit.
-ARG FLINK_VERSION=1.20.1
-ARG SCALA_BINARY=2.12
-ARG LOG4J_VERSION=2.17.1
-# Flink shaded Hadoop jar（使用和其他依赖一致的模板化 URL）
-ARG FLINK_SHADED_HADOOP_VERSION=3.1.1.7.2.9.0-173-9.0
-ARG FLINK_SHADED_HADOOP_BASE="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3"
-
-# Apache Paimon — download released jars from Maven Central just like other deps
-ARG PAIMON_VERSION=1.3.0
-
-RUN set -eux; \
-    PLUGINS_DIR=/opt/flink/lib; \
-    mkdir -p "${PLUGINS_DIR}"; \
-    BASE_MVN="https://repo1.maven.org/maven2"; \
-    download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
-    # Only the three user-specified artifacts (simple and explicit)
-    download "$FLINK_SHADED_HADOOP_BASE/${FLINK_SHADED_HADOOP_VERSION}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar" \
-        "${PLUGINS_DIR}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/paimon/paimon-flink-1.20/${PAIMON_VERSION}/paimon-flink-1.20-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-flink-1.20-${PAIMON_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/paimon/paimon-s3/${PAIMON_VERSION}/paimon-s3-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-s3-${PAIMON_VERSION}.jar"; \
-    # Other required Flink and Log4j artifacts from Maven Central
-    download "$BASE_MVN/org/apache/flink/flink-clients/${FLINK_VERSION}/flink-clients-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-clients-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-connector-datagen/${FLINK_VERSION}/flink-connector-datagen-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-connector-datagen-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-json/${FLINK_VERSION}/flink-json-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-json-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-kubernetes/${FLINK_VERSION}/flink-kubernetes-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-kubernetes-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-python/${FLINK_VERSION}/flink-python-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-python-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-s3-fs-hadoop/${FLINK_VERSION}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-scala_${SCALA_BINARY}/${FLINK_VERSION}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-sql-gateway/${FLINK_VERSION}/flink-sql-gateway-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-sql-gateway-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-table-api-java-uber/${FLINK_VERSION}/flink-table-api-java-uber-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-api-java-uber-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-table-planner-loader/${FLINK_VERSION}/flink-table-planner-loader-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-planner-loader-${FLINK_VERSION}.jar"; \
-    download "$BASE_MVN/org/apache/flink/flink-table-runtime/${FLINK_VERSION}/flink-table-runtime-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-runtime-${FLINK_VERSION}.jar"; 
+# Pre-baked plugin jars are copied from the build context into /opt/flink/lib.
+COPY docker/build/dev/flink-plugins/ /opt/flink/lib/
+#
+## Legacy inline download (kept for reference if we need to regenerate jars inside the image)
+## Download required Flink plugins and dependencies into /opt/flink/flink-plugins
+## Keep the logic simple and explicit.
+#ARG FLINK_VERSION=1.20.1
+#ARG SCALA_BINARY=2.12
+#ARG LOG4J_VERSION=2.17.1
+## Flink shaded Hadoop jar（使用和其他依赖一致的模板化 URL）
+#ARG FLINK_SHADED_HADOOP_VERSION=3.1.1.7.2.9.0-173-9.0
+#ARG FLINK_SHADED_HADOOP_BASE="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3"
+#
+## Apache Paimon — download released jars from Maven Central just like other deps
+#ARG PAIMON_VERSION=1.3.0
+#
+#RUN set -eux; \
+#    PLUGINS_DIR=/opt/flink/lib; \
+#    mkdir -p "${PLUGINS_DIR}"; \
+#    BASE_MVN="https://repo1.maven.org/maven2"; \
+#    download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
+#    # Only the three user-specified artifacts (simple and explicit)
+#    download "$FLINK_SHADED_HADOOP_BASE/${FLINK_SHADED_HADOOP_VERSION}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar" \
+#        "${PLUGINS_DIR}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/paimon/paimon-flink-1.20/${PAIMON_VERSION}/paimon-flink-1.20-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-flink-1.20-${PAIMON_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/paimon/paimon-s3/${PAIMON_VERSION}/paimon-s3-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-s3-${PAIMON_VERSION}.jar"; \
+#    # Other required Flink and Log4j artifacts from Maven Central
+#    download "$BASE_MVN/org/apache/flink/flink-clients/${FLINK_VERSION}/flink-clients-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-clients-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-connector-datagen/${FLINK_VERSION}/flink-connector-datagen-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-connector-datagen-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-json/${FLINK_VERSION}/flink-json-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-json-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-kubernetes/${FLINK_VERSION}/flink-kubernetes-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-kubernetes-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-python/${FLINK_VERSION}/flink-python-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-python-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-s3-fs-hadoop/${FLINK_VERSION}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-scala_${SCALA_BINARY}/${FLINK_VERSION}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-sql-gateway/${FLINK_VERSION}/flink-sql-gateway-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-sql-gateway-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-table-api-java-uber/${FLINK_VERSION}/flink-table-api-java-uber-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-api-java-uber-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-table-planner-loader/${FLINK_VERSION}/flink-table-planner-loader-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-planner-loader-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/flink/flink-table-runtime/${FLINK_VERSION}/flink-table-runtime-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-runtime-${FLINK_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/logging/log4j/log4j-1.2-api/${LOG4J_VERSION}/log4j-1.2-api-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-1.2-api-${LOG4J_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/logging/log4j/log4j-api/${LOG4J_VERSION}/log4j-api-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-api-${LOG4J_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/logging/log4j/log4j-core/${LOG4J_VERSION}/log4j-core-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-core-${LOG4J_VERSION}.jar"; \
+#    download "$BASE_MVN/org/apache/logging/log4j/log4j-slf4j-impl/${LOG4J_VERSION}/log4j-slf4j-impl-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-slf4j-impl-${LOG4J_VERSION}.jar"
 # Traceability (generic, overridable)
 ARG LABEL_SOURCE=""
 ARG LABEL_BASE_NAME="flink:1.20.1-scala_2.12"

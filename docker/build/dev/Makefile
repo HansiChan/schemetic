@@ -1,10 +1,15 @@
-include ../../make.env/common.env
-include build.env
-include ../shared/build.env
+MAKEFILE_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+REPO_ROOT := $(abspath $(MAKEFILE_DIR)/../../..)
 
-include ../shared/build.mk
+include $(REPO_ROOT)/docker/make.env/common.env
+include $(MAKEFILE_DIR)/build.env
+include $(MAKEFILE_DIR)/../shared/build.env
 
-DOCKERFILE ?= Dockerfile
+include $(MAKEFILE_DIR)/../shared/build.mk
+
+DOCKERFILE ?= $(MAKEFILE_DIR)/Dockerfile
+DOCKERFILE_AMAZONE ?= $(MAKEFILE_DIR)/Dockerfile.amazon2023
+BUILD_CONTEXT ?= $(REPO_ROOT)
 
 # Build the app image using args from build.env
 .PHONY: build.app
@@ -28,7 +33,10 @@ build.app:
 	else \
 	  : > "$$LOCAL_FLINK_TMP"; \
 	fi; \
-	set -o allexport; [ -f build.env ] && . ./build.env; set +o allexport; \
+	BUILD_ENV_FILE="$(MAKEFILE_DIR)/build.env"; \
+	if [ -f "$$BUILD_ENV_FILE" ]; then \
+	  set -o allexport; . "$$BUILD_ENV_FILE"; set +o allexport; \
+	fi; \
 	PLATFORM_FLAG=""; \
 	docker build $$PLATFORM_FLAG -f ${DOCKERFILE} \
 	  --build-arg PYTHON_VERSION=$${PYTHON_VERSION} \
@@ -36,7 +44,7 @@ build.app:
 	  --build-arg LABEL_SOURCE="$${LABEL_SOURCE}" \
 	  --build-arg LABEL_BASE_NAME="$${LABEL_BASE_NAME}" \
 	  -t $$IMG \
-	  ../../..
+	  ${BUILD_CONTEXT}
 
 # Build the app image with Amazon Linux 2023 base
 .PHONY: build.app.amazone
@@ -61,15 +69,18 @@ build.app.amazone:
 	else \
 	  : > "$$LOCAL_FLINK_TMP"; \
 	fi; \
-	set -o allexport; [ -f build.env ] && . ./build.env; set +o allexport; \
+	BUILD_ENV_FILE="$(MAKEFILE_DIR)/build.env"; \
+	if [ -f "$$BUILD_ENV_FILE" ]; then \
+	  set -o allexport; . "$$BUILD_ENV_FILE"; set +o allexport; \
+	fi; \
 	PLATFORM_FLAG=""; \
-	docker build $$PLATFORM_FLAG -f Dockerfile.amazon2023 \
+	docker build $$PLATFORM_FLAG -f ${DOCKERFILE_AMAZONE} \
 	  --build-arg PYTHON_VERSION=$${PYTHON_VERSION} \
 	  --build-arg UV_VERSION=$${UV_VERSION} \
 	  --build-arg LABEL_SOURCE="$${LABEL_SOURCE}" \
 	  --build-arg LABEL_BASE_NAME="amazonlinux:2023" \
 	  -t $$IMG \
-	  ../../..
+	  ${BUILD_CONTEXT}
 
 .PHONY: push.app
 push.app:

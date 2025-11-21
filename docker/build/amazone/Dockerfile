@@ -45,7 +45,9 @@ RUN echo "Using JAVA_HOME=$JAVA_HOME" \
     && echo "Upgrading vulnerable packages..." \
     && uv pip install --python /opt/venv/bin/python3 --no-cache --upgrade \
         "protobuf>=4.25.8" \
-        "pyarrow>=14.0.1"
+        "pyarrow>=14.0.1" \
+    && find /opt/venv -type d -exec chmod 0755 {} \; \
+    && find /opt/venv -type f -name 'python*' -exec chmod 0755 {} \;
 
 # Prepare directories: SQL, runtime code, and (empty) plugins
 RUN mkdir -p /opt/flink/sql /opt/flink/usrcode /opt/flink/flink-plugins

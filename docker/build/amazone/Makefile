@@ -27,7 +27,7 @@ build.app:
 	if [ -f "$$BUILD_ENV_FILE" ]; then \
 	  set -o allexport; . "$$BUILD_ENV_FILE"; set +o allexport; \
 	fi; \
-	PLATFORM_FLAG=""; \
+	PLATFORM_FLAG="--platform linux/amd64"; \
 	docker build $$PLATFORM_FLAG -f ${DOCKERFILE} \
 	  --build-arg PYTHON_VERSION=$${PYTHON_VERSION} \
 	  --build-arg UV_VERSION=$${UV_VERSION} \

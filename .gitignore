@@ -16,3 +16,5 @@ log
 */make.env/*.local.env
 docker/build/dev/local-flink.tgz
 flink-plugins/*
+k8s/env/secret.env
+k8s/env/config.env

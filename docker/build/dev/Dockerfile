@@ -1,6 +1,5 @@
 FROM flink:1.20.1-scala_2.12
 
-ENV HADOOP_USER_NAME=flink
 
 # Build-time versions
 ARG PYTHON_VERSION=3.11
@@ -97,6 +96,11 @@ COPY flink-plugins/ /opt/flink/lib/
 #    download "$BASE_MVN/org/apache/logging/log4j/log4j-api/${LOG4J_VERSION}/log4j-api-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-api-${LOG4J_VERSION}.jar"; \
 #    download "$BASE_MVN/org/apache/logging/log4j/log4j-core/${LOG4J_VERSION}/log4j-core-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-core-${LOG4J_VERSION}.jar"; \
 #    download "$BASE_MVN/org/apache/logging/log4j/log4j-slf4j-impl/${LOG4J_VERSION}/log4j-slf4j-impl-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-slf4j-impl-${LOG4J_VERSION}.jar"
+
+RUN set -eux; \
+    if ! getent group 9999 >/dev/null; then groupadd --gid 9999 flink; fi; \
+    if ! getent passwd 9999 >/dev/null; then useradd --uid 9999 --gid 9999 -m -s /bin/bash flink; fi; \
+    chown -R flink:flink /opt/flink /opt/venv /opt/python
 # Traceability (generic, overridable)
 ARG LABEL_SOURCE=""
 ARG LABEL_BASE_NAME="flink:1.20.1-scala_2.12"

@@ -21,7 +21,6 @@ COPY --from=flink-base /docker-entrypoint.sh /docker-entrypoint.sh
 ENV FLINK_HOME=/opt/flink
 ENV JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
 ENV PATH=$FLINK_HOME/bin:$JAVA_HOME/bin:$PATH
-ENV HADOOP_USER_NAME=flink
 
 # Install uv and Python dependencies via uv
 RUN set -eux; \
@@ -68,6 +67,11 @@ RUN set -eux; \
 
 # Pre-baked plugin jars are copied from the build context into /opt/flink/lib.
 COPY flink-plugins/ /opt/flink/lib/
+
+RUN set -eux; \
+    if ! getent group 9999 >/dev/null; then groupadd --gid 9999 flink; fi; \
+    if ! getent passwd 9999 >/dev/null; then useradd --uid 9999 --gid 9999 -m -s /bin/bash flink; fi; \
+    chown -R flink:flink /opt/flink /opt/venv /opt/python
 
 # Traceability (generic, overridable)
 ARG LABEL_SOURCE=""

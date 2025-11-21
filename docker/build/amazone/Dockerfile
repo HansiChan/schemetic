@@ -1,21 +1,25 @@
-# Reuse Flink binaries from the upstream Flink image
-ARG FLINK_BASE_IMAGE=flink:1.20.1-scala_2.12
-FROM ${FLINK_BASE_IMAGE} as flink_dist
+# Stage 1: Get Flink from official image
+FROM flink:1.20.1-scala_2.12 AS flink-base
 
-# Amazon Linux 2023 base image with Flink installed locally
+# Stage 2: Build on Amazon Linux 2023
 FROM amazonlinux:2023
 
 # Build-time versions
 ARG PYTHON_VERSION=3.11
 ARG UV_VERSION=v0.4.20
-ARG FLINK_VERSION=1.20.1
-ARG SCALA_BINARY=2.12
 
-# Install base tools
-RUN dnf install -y --allowerasing \
-    curl ca-certificates findutils gcc gcc-c++ make tar gzip shadow-utils \
-    java-17-amazon-corretto-devel \
-    && dnf clean all
+# Copy Flink from official image
+COPY --from=flink-base /opt/flink /opt/flink
+COPY --from=flink-base /docker-entrypoint.sh /docker-entrypoint.sh
+
+# Set Flink environment variables
+ENV FLINK_HOME=/opt/flink
+ENV PATH=$FLINK_HOME/bin:$PATH
+
+# Base tools
+RUN dnf update -y && dnf install -y \
+    curl ca-certificates findutils gcc gcc-c++ make java-17-amazon-corretto-devel \
+ && dnf clean all
 
 # Install uv and Python dependencies via uv
 RUN set -eux; \
@@ -34,18 +38,8 @@ RUN set -eux; \
     find /opt/venv -type d -exec chmod 0755 {} \; ; \
     find /opt/venv -type f -name 'python*' -exec chmod 0755 {} \;
 
-# Install Flink by copying from the pre-built official image
-COPY --from=flink_dist /opt/flink /opt/flink
-COPY --from=flink_dist /docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod -R a+rx /opt/flink && chmod +x /docker-entrypoint.sh
-
-# Set FLINK_HOME
-ENV FLINK_HOME=/opt/flink
-ENV PATH=$FLINK_HOME/bin:$PATH
-
-# Install Python dependencies
 COPY docker/build/amazone/requirements.txt /tmp/requirements.txt
-RUN export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto \
+RUN export JAVA_HOME=$(dirname $(dirname $(readlink -f $(command -v javac)))) \
     && echo "Using JAVA_HOME=$JAVA_HOME" \
     && uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt \
     && echo "Upgrading vulnerable packages..." \
@@ -69,50 +63,8 @@ RUN set -eux; \
     CA_FILE=/tmp/minio-ca.crt TARGET_TRUSTSTORE=/etc/ssl/truststore/cacerts STOREPASS=changeit /opt/bootstrap/register-ca.sh; \
     rm -f /tmp/minio-ca.crt
 
-# Copy pre-downloaded plugin jars; the old inline download block is kept below for reference.
+# Pre-baked plugin jars are copied from the build context into /opt/flink/lib.
 COPY flink-plugins/ /opt/flink/lib/
-#
-## Download required Flink plugins and dependencies into /opt/flink/lib
-#ARG LOG4J_VERSION=2.17.1
-#ARG FLINK_SHADED_HADOOP_VERSION=3.1.1.7.2.9.0-173-9.0
-#ARG FLINK_SHADED_HADOOP_BASE="https://repository.cloudera.com/repository/cloudera-repos/org/apache/flink/flink-shaded-hadoop-3"
-#ARG PAIMON_VERSION=1.3.0
-#
-#RUN set -eux; \
-#    PLUGINS_DIR=/opt/flink/lib; \
-#    mkdir -p "${PLUGINS_DIR}"; \
-#    BASE_MVN="https://repo1.maven.org/maven2"; \
-#    download() { url="$1"; out="$2"; echo "Downloading: $url"; curl -fL --retry 3 --retry-delay 2 -o "$out" "$url"; }; \
-#    # Download all required jars
-#    download "$FLINK_SHADED_HADOOP_BASE/${FLINK_SHADED_HADOOP_VERSION}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar" \
-#        "${PLUGINS_DIR}/flink-shaded-hadoop-3-${FLINK_SHADED_HADOOP_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/paimon/paimon-flink-1.20/${PAIMON_VERSION}/paimon-flink-1.20-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-flink-1.20-${PAIMON_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/paimon/paimon-s3/${PAIMON_VERSION}/paimon-s3-${PAIMON_VERSION}.jar" "${PLUGINS_DIR}/paimon-s3-${PAIMON_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-clients/${FLINK_VERSION}/flink-clients-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-clients-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-connector-datagen/${FLINK_VERSION}/flink-connector-datagen-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-connector-datagen-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-json/${FLINK_VERSION}/flink-json-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-json-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-kubernetes/${FLINK_VERSION}/flink-kubernetes-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-kubernetes-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-python/${FLINK_VERSION}/flink-python-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-python-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-s3-fs-hadoop/${FLINK_VERSION}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-s3-fs-hadoop-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-scala_${SCALA_BINARY}/${FLINK_VERSION}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-scala_${SCALA_BINARY}-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-sql-gateway/${FLINK_VERSION}/flink-sql-gateway-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-sql-gateway-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-table-api-java-uber/${FLINK_VERSION}/flink-table-api-java-uber-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-api-java-uber-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-table-planner-loader/${FLINK_VERSION}/flink-table-planner-loader-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-planner-loader-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/flink/flink-table-runtime/${FLINK_VERSION}/flink-table-runtime-${FLINK_VERSION}.jar" "${PLUGINS_DIR}/flink-table-runtime-${FLINK_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/logging/log4j/log4j-1.2-api/${LOG4J_VERSION}/log4j-1.2-api-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-1.2-api-${LOG4J_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/logging/log4j/log4j-api/${LOG4J_VERSION}/log4j-api-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-api-${LOG4J_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/logging/log4j/log4j-core/${LOG4J_VERSION}/log4j-core-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-core-${LOG4J_VERSION}.jar"; \
-#    download "$BASE_MVN/org/apache/logging/log4j/log4j-slf4j-impl/${LOG4J_VERSION}/log4j-slf4j-impl-${LOG4J_VERSION}.jar" "${PLUGINS_DIR}/log4j-slf4j-impl-${LOG4J_VERSION}.jar"
-
-# Create flink user for K8s compatibility
-RUN groupadd --gid=9999 flink && \
-    useradd --uid=9999 --gid=9999 -m -s /bin/bash flink && \
-    chown -R flink:flink /opt/flink
-
-WORKDIR /opt/flink
-USER flink
-ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["bash"]
 
 # Traceability (generic, overridable)
 ARG LABEL_SOURCE=""

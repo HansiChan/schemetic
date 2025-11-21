@@ -16,9 +16,8 @@ build.app:
 	@set -e; \
 	IMG="$(IMAGE)"; \
 	if [ -z "$$IMG" ]; then \
-	  if [ -n "${DEV_IMAGE}" ] && [ "${DEV_IMAGE##*:}" != "" ] && [ "${DEV_IMAGE##*:}" != -* ]; then \
-	    BASE_IMG="${DEV_IMAGE%:*}"; \
-	    IMG="$$BASE_IMG:amazone"; \
+	  if [ -n "${AMAZONE_IMAGE}" ] && [ "${AMAZONE_IMAGE##*:}" != "" ] && [ "${AMAZONE_IMAGE##*:}" != -* ]; then \
+	    IMG="${AMAZONE_IMAGE}"; \
 	  else \
 	    IMG="${IMAGE_REPO_ROOT}/${PROJECT_NAME}_${APP_NAME}:amazone"; \
 	  fi; \
@@ -51,9 +50,8 @@ push.app:
 	@set -e; \
 	IMG="$(IMAGE)"; \
 	if [ -z "$$IMG" ]; then \
-	  if [ -n "${DEV_IMAGE}" ] && [ "${DEV_IMAGE##*:}" != "" ] && [ "${DEV_IMAGE##*:}" != -* ]; then \
-	    BASE_IMG="${DEV_IMAGE%:*}"; \
-	    IMG="$$BASE_IMG:amazone"; \
+	  if [ -n "${AMAZONE_IMAGE}" ] && [ "${AMAZONE_IMAGE##*:}" != "" ] && [ "${AMAZONE_IMAGE##*:}" != -* ]; then \
+	    IMG="${AMAZONE_IMAGE}"; \
 	  else \
 	    IMG="${IMAGE_REPO_ROOT}/${PROJECT_NAME}_${APP_NAME}:amazone"; \
 	  fi; \

@@ -8,18 +8,19 @@ FROM amazonlinux:2023
 ARG PYTHON_VERSION=3.11
 ARG UV_VERSION=v0.4.20
 
+# Base tools and JDK - install first before copying large Flink directory
+RUN dnf update -y && dnf install -y --allowerasing \
+    curl ca-certificates findutils gcc gcc-c++ make tar gzip java-17-amazon-corretto-devel \
+ && dnf clean all
+
 # Copy Flink from official image
 COPY --from=flink-base /opt/flink /opt/flink
 COPY --from=flink-base /docker-entrypoint.sh /docker-entrypoint.sh
 
-# Set Flink environment variables
+# Set Flink and Java environment variables (use Amazon Corretto JDK)
 ENV FLINK_HOME=/opt/flink
-ENV PATH=$FLINK_HOME/bin:$PATH
-
-# Base tools
-RUN dnf update -y && dnf install -y \
-    curl ca-certificates findutils gcc gcc-c++ make java-17-amazon-corretto-devel \
- && dnf clean all
+ENV JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
+ENV PATH=$FLINK_HOME/bin:$JAVA_HOME/bin:$PATH
 
 # Install uv and Python dependencies via uv
 RUN set -eux; \
@@ -39,8 +40,7 @@ RUN set -eux; \
     find /opt/venv -type f -name 'python*' -exec chmod 0755 {} \;
 
 COPY docker/build/amazone/requirements.txt /tmp/requirements.txt
-RUN export JAVA_HOME=$(dirname $(dirname $(readlink -f $(command -v javac)))) \
-    && echo "Using JAVA_HOME=$JAVA_HOME" \
+RUN echo "Using JAVA_HOME=$JAVA_HOME" \
     && uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt \
     && echo "Upgrading vulnerable packages..." \
     && uv pip install --python /opt/venv/bin/python3 --no-cache --upgrade \

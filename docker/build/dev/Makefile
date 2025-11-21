@@ -23,15 +23,6 @@ build.app:
 	  fi; \
 	  echo "[info] IMAGE not provided; defaulting to $$IMG"; \
 	fi; \
-	LOCAL_FLINK_TMP="local-flink.tgz"; \
-	cleanup() { rm -f "$$LOCAL_FLINK_TMP"; }; \
-	trap cleanup EXIT; \
-	if [ -n "${LOCAL_FLINK_TGZ}" ] && [ -f "${LOCAL_FLINK_TGZ}" ]; then \
-	  echo "[info] Using local Flink tarball ${LOCAL_FLINK_TGZ}"; \
-	  cp "${LOCAL_FLINK_TGZ}" "$$LOCAL_FLINK_TMP"; \
-	else \
-	  : > "$$LOCAL_FLINK_TMP"; \
-	fi; \
 	BUILD_ENV_FILE="$(MAKEFILE_DIR)/build.env"; \
 	if [ -f "$$BUILD_ENV_FILE" ]; then \
 	  set -o allexport; . "$$BUILD_ENV_FILE"; set +o allexport; \

@@ -1,5 +1,7 @@
 FROM flink:1.20.1-scala_2.12
 
+ENV HADOOP_USER_NAME=flink
+
 # Build-time versions
 ARG PYTHON_VERSION=3.11
 ARG UV_VERSION=v0.4.20

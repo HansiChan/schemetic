@@ -21,6 +21,7 @@ COPY --from=flink-base /docker-entrypoint.sh /docker-entrypoint.sh
 ENV FLINK_HOME=/opt/flink
 ENV JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
 ENV PATH=$FLINK_HOME/bin:$JAVA_HOME/bin:$PATH
+ENV HADOOP_USER_NAME=flink
 
 # Install uv and Python dependencies via uv
 RUN set -eux; \

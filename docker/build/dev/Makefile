@@ -8,7 +8,6 @@ include $(MAKEFILE_DIR)/../shared/build.env
 include $(MAKEFILE_DIR)/../shared/build.mk
 
 DOCKERFILE ?= $(MAKEFILE_DIR)/Dockerfile
-DOCKERFILE_AMAZONE ?= $(MAKEFILE_DIR)/Dockerfile.amazon2023
 BUILD_CONTEXT ?= $(REPO_ROOT)
 
 # Build the app image using args from build.env
@@ -43,42 +42,6 @@ build.app:
 	  --build-arg UV_VERSION=$${UV_VERSION} \
 	  --build-arg LABEL_SOURCE="$${LABEL_SOURCE}" \
 	  --build-arg LABEL_BASE_NAME="$${LABEL_BASE_NAME}" \
-	  -t $$IMG \
-	  ${BUILD_CONTEXT}
-
-# Build the app image with Amazon Linux 2023 base
-.PHONY: build.app.amazone
-build.app.amazone:
-	@set -e; \
-	IMG="$(IMAGE)"; \
-	if [ -z "$$IMG" ]; then \
-	  if [ -n "${DEV_IMAGE}" ] && [ "${DEV_IMAGE##*:}" != "" ] && [ "${DEV_IMAGE##*:}" != -* ]; then \
-	    BASE_IMG="${DEV_IMAGE%:*}"; \
-	    IMG="$$BASE_IMG:amazone"; \
-	  else \
-	    IMG="${IMAGE_REPO_ROOT}/${PROJECT_NAME}_${APP_NAME}:amazone"; \
-	  fi; \
-	  echo "[info] IMAGE not provided; defaulting to $$IMG"; \
-	fi; \
-	LOCAL_FLINK_TMP="local-flink.tgz"; \
-	cleanup() { rm -f "$$LOCAL_FLINK_TMP"; }; \
-	trap cleanup EXIT; \
-	if [ -n "${LOCAL_FLINK_TGZ}" ] && [ -f "${LOCAL_FLINK_TGZ}" ]; then \
-	  echo "[info] Using local Flink tarball ${LOCAL_FLINK_TGZ}"; \
-	  cp "${LOCAL_FLINK_TGZ}" "$$LOCAL_FLINK_TMP"; \
-	else \
-	  : > "$$LOCAL_FLINK_TMP"; \
-	fi; \
-	BUILD_ENV_FILE="$(MAKEFILE_DIR)/build.env"; \
-	if [ -f "$$BUILD_ENV_FILE" ]; then \
-	  set -o allexport; . "$$BUILD_ENV_FILE"; set +o allexport; \
-	fi; \
-	PLATFORM_FLAG=""; \
-	docker build $$PLATFORM_FLAG -f ${DOCKERFILE_AMAZONE} \
-	  --build-arg PYTHON_VERSION=$${PYTHON_VERSION} \
-	  --build-arg UV_VERSION=$${UV_VERSION} \
-	  --build-arg LABEL_SOURCE="$${LABEL_SOURCE}" \
-	  --build-arg LABEL_BASE_NAME="amazonlinux:2023" \
 	  -t $$IMG \
 	  ${BUILD_CONTEXT}
 

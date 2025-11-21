@@ -44,7 +44,7 @@ ENV FLINK_HOME=/opt/flink
 ENV PATH=$FLINK_HOME/bin:$PATH
 
 # Install Python dependencies
-COPY docker/build/dev/requirements.txt /tmp/requirements.txt
+COPY docker/build/amazone/requirements.txt /tmp/requirements.txt
 RUN export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto \
     && echo "Using JAVA_HOME=$JAVA_HOME" \
     && uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt \
@@ -61,8 +61,8 @@ COPY src/sql/pipeline.sql /opt/flink/sql/pipeline.sql
 COPY src/app.py /opt/flink/usrcode/app.py
 
 # Pre-bake truststore with MinIO CA so runtime pods do not need init containers
-COPY docker/build/dev/bootstrap/register-ca.sh /opt/bootstrap/register-ca.sh
-COPY docker/build/dev/minio-ca.crt /tmp/minio-ca.crt
+COPY docker/build/amazone/bootstrap/register-ca.sh /opt/bootstrap/register-ca.sh
+COPY docker/build/amazone/minio-ca.crt /tmp/minio-ca.crt
 RUN set -eux; \
     chmod +x /opt/bootstrap/register-ca.sh; \
     mkdir -p /etc/ssl/truststore; \
@@ -70,7 +70,7 @@ RUN set -eux; \
     rm -f /tmp/minio-ca.crt
 
 # Copy pre-downloaded plugin jars; the old inline download block is kept below for reference.
-COPY docker/build/dev/flink-plugins/ /opt/flink/lib/
+COPY flink-plugins/ /opt/flink/lib/
 #
 ## Download required Flink plugins and dependencies into /opt/flink/lib
 #ARG LOG4J_VERSION=2.17.1

@@ -52,7 +52,7 @@ RUN set -eux; \
     rm -f /tmp/minio-ca.crt
 
 # Pre-baked plugin jars are copied from the build context into /opt/flink/lib.
-COPY docker/build/dev/flink-plugins/ /opt/flink/lib/
+COPY flink-plugins/ /opt/flink/lib/
 #
 ## Legacy inline download (kept for reference if we need to regenerate jars inside the image)
 ## Download required Flink plugins and dependencies into /opt/flink/flink-plugins

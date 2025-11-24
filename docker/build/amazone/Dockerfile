@@ -10,7 +10,8 @@ ARG UV_VERSION=v0.4.20
 
 # Base tools and JDK - install first before copying large Flink directory
 RUN dnf update -y && dnf install -y --allowerasing \
-    curl ca-certificates findutils gcc gcc-c++ make tar gzip java-17-amazon-corretto-devel \
+    curl ca-certificates findutils gcc gcc-c++ make tar gzip shadow-utils \
+    java-17-amazon-corretto-devel \
  && dnf clean all
 
 # Copy Flink from official image

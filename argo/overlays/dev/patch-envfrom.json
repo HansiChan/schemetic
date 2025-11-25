@@ -1,0 +1,10 @@
+[
+  {
+    "op": "add",
+    "path": "/spec/podTemplate/spec/containers/0/envFrom",
+    "value": [
+      { "configMapRef": { "name": "dev-demo-flink-s3-paimon-cm" } },
+      { "secretRef": { "name": "dev-flink-demo-minio-secret" } }
+    ]
+  }
+]

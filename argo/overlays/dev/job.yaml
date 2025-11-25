@@ -1,0 +1,22 @@
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: demo-flinkdeployment
+spec:
+  job:
+    args:
+    - "-py"
+    - "/opt/flink/usrcode/app.py"
+    - "-pyexec"
+    - "/opt/venv/bin/python3"
+#    jarURI: local:///opt/flink/examples/streaming/StateMachineExample.jar
+    jarURI: local:///opt/flink/lib/flink-python-1.20.1.jar
+    entryClass: org.apache.flink.client.python.PythonDiver
+    parallelism: 2
+    state: running
+    upgradeMode: stateless
+  jobManager:
+    replicas: 1
+    resource:
+      cpu: 1
+      memory: 2048m

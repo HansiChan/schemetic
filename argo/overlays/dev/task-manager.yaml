@@ -1,0 +1,14 @@
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: demo-flinkdeployment
+spec:
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+  image: ds01-harbor.venetianqa.local/data-service/flink_base@sha256:d705a417dc543a503d9db990aaa6dd111060180b70e51af3a156c97c19ecd08d
+  taskManager:
+    replicas: 2
+    resource:
+      cpu: 1
+      memory: 4096m
+      

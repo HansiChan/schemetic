@@ -15,6 +15,7 @@ spec:
 
   # Destination cluster and namespace to deploy the application
   destination:
+    server: https://172.16.36.51:6443  
     # The namespace will only be set for namespace-scoped resources
     # that have not set a value for .metadata.namespace
     namespace: dev-flink-demo

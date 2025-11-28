@@ -5,7 +5,7 @@ metadata:
   namespace: flink
 spec:
   flinkVersion: v1_20
-  image: quay.io/colinchan2025/flink_base:amazone-0.1.1
+  image: quay.io/colinchan2025/flink_base:amazone-old
   mode: native
   serviceAccount: flink
 

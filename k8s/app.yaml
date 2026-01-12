@@ -54,6 +54,9 @@ spec:
         - name: flink-volume
           persistentVolumeClaim:
             claimName: flink-data
+        - name: sql-config
+          configMap:
+            name: flink-sql-config
 
       containers:
         - name: flink-main-container
@@ -77,3 +80,6 @@ spec:
           volumeMounts:
             - name: flink-volume
               mountPath: /flink-data
+            - name: sql-config
+              mountPath: /opt/flink/sql
+              readOnly: true

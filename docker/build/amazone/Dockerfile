@@ -1,18 +1,18 @@
 # Stage 1: Get Flink from official image
-FROM flink:1.20.1-scala_2.12 AS flink-base
+FROM flink:1.20.2-scala_2.12 AS flink-base
 
 # Stage 2: Build on Amazon Linux 2023
-FROM amazonlinux:2023
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal
 
 # Build-time versions
 ARG PYTHON_VERSION=3.11
 ARG UV_VERSION=v0.4.20
 
 # Base tools and JDK - install first before copying large Flink directory
-RUN dnf update -y && dnf install -y --allowerasing \
-    curl ca-certificates findutils gcc gcc-c++ make tar gzip shadow-utils \
+RUN microdnf update -y && microdnf install -y \
+    ca-certificates findutils gcc gcc-c++ make tar gzip shadow-utils \
     java-17-amazon-corretto-devel \
- && dnf clean all
+    && microdnf clean all
 
 # Copy Flink from official image
 COPY --from=flink-base /opt/flink /opt/flink
@@ -45,8 +45,8 @@ RUN echo "Using JAVA_HOME=$JAVA_HOME" \
     && uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt \
     && echo "Upgrading vulnerable packages..." \
     && uv pip install --python /opt/venv/bin/python3 --no-cache --upgrade \
-        "protobuf>=4.25.8" \
-        "pyarrow>=14.0.1" \
+    "protobuf>=4.25.8" \
+    "pyarrow>=14.0.1" \
     && find /opt/venv -type d -exec chmod 0755 {} \; \
     && find /opt/venv -type f -name 'python*' -exec chmod 0755 {} \;
 
@@ -76,6 +76,6 @@ RUN set -eux; \
 
 # Traceability (generic, overridable)
 ARG LABEL_SOURCE=""
-ARG LABEL_BASE_NAME="amazonlinux:2023"
+ARG LABEL_BASE_NAME="public.ecr.aws/amazonlinux/amazonlinux:2023-minimal"
 LABEL org.opencontainers.image.source="${LABEL_SOURCE}" \
-      org.opencontainers.image.base.name="${LABEL_BASE_NAME}"
+    org.opencontainers.image.base.name="${LABEL_BASE_NAME}"

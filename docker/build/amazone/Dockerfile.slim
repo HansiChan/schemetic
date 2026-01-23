@@ -1,0 +1,109 @@
+# Stage 1: Get Flink from official image
+FROM flink:1.20.2-scala_2.12 AS flink-base
+
+# Stage 2: Build stage for Python dependencies
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal AS python-builder
+
+ARG PYTHON_VERSION=3.11
+ARG UV_VERSION=v0.4.20
+
+# Install build dependencies (including shadow-utils for user creation)
+RUN microdnf install -y \
+    gcc gcc-c++ make shadow-utils tar gzip \
+    java-17-amazon-corretto-headless \
+    && microdnf clean all
+
+# Create flink user and group
+RUN groupadd --gid 9999 flink && \
+    useradd --uid 9999 --gid 9999 flink
+
+# Install uv and Python
+RUN set -eux; \
+    curl -LsSf --retry 3 --retry-delay 2 https://astral.sh/uv/install.sh -o /tmp/uv-install.sh; \
+    sh /tmp/uv-install.sh --version ${UV_VERSION} || sh /tmp/uv-install.sh; \
+    ln -s /root/.local/bin/uv /usr/local/bin/uv; \
+    uv python install ${PYTHON_VERSION}; \
+    PYBIN=$(uv python find ${PYTHON_VERSION} | head -n1); \
+    PYROOT=$(dirname $(dirname "$PYBIN")); \
+    cp -a "$PYROOT" /opt/python; \
+    /opt/python/bin/python3 -m venv /opt/venv; \
+    # Set permissions immediately after creation
+    chown -R 9999:9999 /opt/python /opt/venv
+
+# Install Python dependencies
+COPY docker/build/amazone/requirements.txt /tmp/requirements.txt
+RUN export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto && \
+    uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt && \
+    uv pip install --python /opt/venv/bin/python3 --no-cache --upgrade \
+    "protobuf>=4.25.8" \
+    "pyarrow>=14.0.1" && \
+    # Clean up Python cache and unnecessary files
+    find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find /opt/venv -type f -name '*.pyc' -delete && \
+    find /opt/venv -type f -name '*.pyo' -delete && \
+    find /opt/venv -type d -name 'tests' -exec rm -rf {} + 2>/dev/null || true && \
+    find /opt/python -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find /opt/python -type f -name '*.pyc' -delete
+
+# Stage 3: Final runtime stage (minimal)
+FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal
+
+# Install ONLY runtime dependencies (no build tools)
+RUN microdnf install -y \
+    ca-certificates findutils shadow-utils \
+    java-17-amazon-corretto-headless \
+    && microdnf clean all \
+    && rm -rf /var/cache/yum
+
+# Create flink user and group BEFORE copying files
+RUN groupadd --gid 9999 flink && \
+    useradd --uid 9999 --gid 9999 -m -s /bin/bash flink
+
+# Copy Flink with correct ownership (only necessary directories)
+COPY --from=flink-base --chown=9999:9999 /opt/flink/bin /opt/flink/bin
+COPY --from=flink-base --chown=9999:9999 /opt/flink/lib /opt/flink/lib
+COPY --from=flink-base --chown=9999:9999 /opt/flink/opt /opt/flink/opt
+COPY --from=flink-base --chown=9999:9999 /opt/flink/plugins /opt/flink/plugins
+COPY --from=flink-base /docker-entrypoint.sh /docker-entrypoint.sh
+
+# Copy Python and virtualenv from builder with ownership
+COPY --from=python-builder --chown=9999:9999 /opt/python /opt/python
+COPY --from=python-builder --chown=9999:9999 /opt/venv /opt/venv
+
+# Set environment variables
+ENV FLINK_HOME=/opt/flink
+ENV JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
+ENV PATH=$FLINK_HOME/bin:$JAVA_HOME/bin:$PATH
+
+# Link Python
+RUN ln -sf /opt/python/bin/python3 /usr/local/bin/python3
+
+# Prepare directories and set ownership immediately
+RUN mkdir -p /opt/flink/sql /opt/flink/usrcode /opt/flink/flink-plugins && \
+    chown -R 9999:9999 /opt/flink/sql /opt/flink/usrcode /opt/flink/flink-plugins
+
+# Copy application files with ownership
+COPY --chown=9999:9999 src/sql/pipeline.sql /opt/flink/sql/pipeline.sql
+COPY --chown=9999:9999 src/app.py /opt/flink/usrcode/app.py
+
+# Pre-bake truststore with MinIO CA
+COPY docker/build/amazone/bootstrap/register-ca.sh /opt/bootstrap/register-ca.sh
+COPY docker/build/amazone/minio-ca.crt /tmp/minio-ca.crt
+RUN set -eux; \
+    chmod +x /opt/bootstrap/register-ca.sh; \
+    mkdir -p /etc/ssl/truststore; \
+    CA_FILE=/tmp/minio-ca.crt TARGET_TRUSTSTORE=/etc/ssl/truststore/cacerts STOREPASS=changeit /opt/bootstrap/register-ca.sh; \
+    rm -f /tmp/minio-ca.crt && \
+    chown -R 9999:9999 /opt/bootstrap
+
+# Copy Flink plugins with ownership
+COPY --chown=9999:9999 flink-plugins/ /opt/flink/lib/
+
+# Traceability
+ARG LABEL_SOURCE=""
+ARG LABEL_BASE_NAME="public.ecr.aws/amazonlinux/amazonlinux:2023-minimal"
+LABEL org.opencontainers.image.source="${LABEL_SOURCE}" \
+    org.opencontainers.image.base.name="${LABEL_BASE_NAME}"
+
+# Switch to flink user
+USER flink

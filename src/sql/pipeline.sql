@@ -1,3 +1,11 @@
+-- ============================================
+-- Flink SQL 测试脚本 - 不依赖外部表
+-- 用于验证 Paimon + S3 环境配置
+-- ============================================
+
+SET 'execution.runtime-mode' = 'batch';
+
+-- 创建 Paimon Catalog
 CREATE CATALOG ${CATALOG} WITH (
   'type' = 'paimon',
   'warehouse' = '${WAREHOUSE}',
@@ -8,317 +16,109 @@ CREATE CATALOG ${CATALOG} WITH (
 );
 
 USE CATALOG ${CATALOG};
-
 CREATE DATABASE IF NOT EXISTS ${DATABASE};
 USE ${DATABASE};
 
+-- ============================================
+-- 测试 1: 创建简单表并写入数据
+-- ============================================
+CREATE TABLE IF NOT EXISTS test_simple (
+    id INT,
+    name STRING,
+    value DOUBLE,
+    created_at TIMESTAMP(3),
+    PRIMARY KEY (id) NOT ENFORCED
+) WITH (
+    'bucket' = '1'
+);
 
-CREATE TABLE IF NOT EXISTS gmg_smt_patron_rating_hand_by_hand
-AS
+-- 插入测试数据
+INSERT INTO test_simple VALUES
+    (1, 'Alice', 100.5, TIMESTAMP '2026-01-01 10:00:00'),
+    (2, 'Bob', 200.75, TIMESTAMP '2026-01-01 11:00:00'),
+    (3, 'Charlie', 300.25, TIMESTAMP '2026-01-01 12:00:00');
+
+-- ============================================
+-- 测试 2: 使用 VALUES 生成数据并创建表
+-- ============================================
+CREATE TABLE IF NOT EXISTS test_generated AS
+SELECT 
+    id,
+    CONCAT('user_', CAST(id AS STRING)) AS username,
+    id * 10.5 AS score,
+    CURRENT_TIMESTAMP AS created_at
+FROM (VALUES (1), (2), (3), (4), (5)) AS t(id);
+
+-- ============================================
+-- 测试 3: 日期时间函数测试
+-- ============================================
+CREATE TABLE IF NOT EXISTS test_datetime AS
 SELECT
-CONCAT(t.uid, '-', t.property, '-', t.game_info_uid, '-', t.box_number, '-', t.bet_option) AS uid, 
-t.uid AS hand_by_hand_uid,
-t.rating_id,
-t.game_info_uid,
-t.property,
-t.dt,
-trim(t.game_id) AS game_id,
-t.seated_patron_exists,
-t.game_start_datetime,
-t.game_finish_datetime,
-trim(t.hardware_id) AS table_device_id,
-t.operation_id,
-t.bet_chip_sum, 
-t.pay_off_sum,
-t.box_number AS box_number,
-t.bet_option AS bet_option,
-t.chip_set_name AS chipset_type,
-t.bet_amount,
-t.payoff_amount,
-t.create_datetime
+    1 AS id,
+    CURRENT_DATE AS today,
+    CURRENT_TIMESTAMP AS now,
+    CURRENT_DATE - INTERVAL '1' DAY AS yesterday,
+    CURRENT_DATE + INTERVAL '7' DAY AS next_week,
+    CAST(CURRENT_TIMESTAMP AS DATE) AS date_only;
+
+-- ============================================
+-- 测试 4: 字符串和数学函数测试
+-- ============================================
+CREATE TABLE IF NOT EXISTS test_functions AS
+SELECT
+    1 AS id,
+    UPPER('hello world') AS upper_str,
+    LOWER('HELLO WORLD') AS lower_str,
+    SUBSTRING('abcdefg', 2, 3) AS sub_str,
+    CHAR_LENGTH('测试字符串') AS str_len,
+    TRIM('  spaces  ') AS trimmed,
+    ABS(-100) AS abs_val,
+    ROUND(3.14159, 2) AS rounded,
+    POWER(2, 10) AS power_val,
+    MOD(17, 5) AS mod_val;
+
+-- ============================================
+-- 测试 5: 聚合函数测试
+-- ============================================
+CREATE TABLE IF NOT EXISTS test_aggregation AS
+SELECT
+    category,
+    COUNT(*) AS cnt,
+    SUM(amount) AS total,
+    AVG(amount) AS average,
+    MIN(amount) AS min_val,
+    MAX(amount) AS max_val
 FROM (
--- Unpivot bet options using UNION ALL (Flink SQL compatible, replaces StarRocks json_each)
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'PlayerWin' AS bet_option,
-       bet_chip_player_win_average AS bet_amount,
-       COALESCE(pay_off_player_win_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_player_win_average > 0
+    VALUES 
+        ('A', 100),
+        ('A', 200),
+        ('A', 150),
+        ('B', 300),
+        ('B', 250)
+) AS t(category, amount)
+GROUP BY category;
 
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'BankerWin' AS bet_option,
-       bet_chip_banker_win_average AS bet_amount,
-       COALESCE(pay_off_banker_win_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_banker_win_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'Tie' AS bet_option,
-       bet_chip_tie_average AS bet_amount,
-       COALESCE(pay_off_tie_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_tie_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'PlayerPair' AS bet_option,
-       bet_chip_player_pair_average AS bet_amount,
-       COALESCE(pay_off_player_pair_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_player_pair_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'BankerPair' AS bet_option,
-       bet_chip_banker_pair_average AS bet_amount,
-       COALESCE(pay_off_banker_pair_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_banker_pair_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'Lucky6' AS bet_option,
-       bet_chip_lucky6_average AS bet_amount,
-       COALESCE(pay_off_lucky6_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_lucky6_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'Lucky6Small' AS bet_option,
-       bet_chip_lucky6_small_average AS bet_amount,
-       COALESCE(pay_off_lucky6_small_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_lucky6_small_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'Lucky6Big' AS bet_option,
-       bet_chip_lucky6_big_average AS bet_amount,
-       COALESCE(pay_off_lucky6_big_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_lucky6_big_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'Fortune6' AS bet_option,
-       bet_chip_fortune6_average AS bet_amount,
-       COALESCE(pay_off_fortune6_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_fortune6_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'Tiger' AS bet_option,
-       bet_chip_tiger_average AS bet_amount,
-       COALESCE(pay_off_tiger_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_tiger_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'SmallTiger' AS bet_option,
-       bet_chip_small_tiger_average AS bet_amount,
-       COALESCE(pay_off_small_tiger_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_small_tiger_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'BigTiger' AS bet_option,
-       bet_chip_big_tiger_average AS bet_amount,
-       COALESCE(pay_off_big_tiger_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_big_tiger_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'TigerTie' AS bet_option,
-       bet_chip_tiger_tie_average AS bet_amount,
-       COALESCE(pay_off_tiger_tie_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_tiger_tie_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'TigerPair' AS bet_option,
-       bet_chip_tiger_pair_average AS bet_amount,
-       COALESCE(pay_off_tiger_pair_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_tiger_pair_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'BankerIns1' AS bet_option,
-       bet_chip_banker_ins1_average AS bet_amount,
-       COALESCE(pay_off_banker_ins1_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_banker_ins1_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'PlayerIns1' AS bet_option,
-       bet_chip_player_ins1_average AS bet_amount,
-       COALESCE(pay_off_player_ins1_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_player_ins1_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'BankerIns2' AS bet_option,
-       bet_chip_banker_ins2_average AS bet_amount,
-       COALESCE(pay_off_banker_ins2_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_banker_ins2_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'PlayerIns2' AS bet_option,
-       bet_chip_player_ins2_average AS bet_amount,
-       COALESCE(pay_off_player_ins2_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_player_ins2_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'Super7' AS bet_option,
-       bet_chip_super7_average AS bet_amount,
-       COALESCE(pay_off_super7_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_super7_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'SuperLucky' AS bet_option,
-       bet_chip_super_lucky_average AS bet_amount,
-       COALESCE(pay_off_super_lucky_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_super_lucky_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'Lucky72' AS bet_option,
-       bet_chip_lucky72_average AS bet_amount,
-       COALESCE(pay_off_lucky72_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_lucky72_average > 0
-
-UNION ALL
-
-SELECT uid, game_id, property, box_number, rating_id, game_info_uid, dt,
-       game_start_datetime, game_finish_datetime, hardware_id, operation_id,
-       patron_id, create_datetime, seated_patron_exists, bet_chip_sum, pay_off_sum, chip_set_name,
-       'Lucky73' AS bet_option,
-       bet_chip_lucky73_average AS bet_amount,
-       COALESCE(pay_off_lucky73_average, 0) AS payoff_amount
-FROM tapdata_patron_rating_hand_by_hand
-WHERE bet_chip_sum > 0 AND bet_chip_lucky73_average > 0
-) t;
-
-CREATE TABLE IF NOT EXISTS gmg_smt_patron_rating_hand_by_hand_nobet
-AS
+-- ============================================
+-- 测试 6: 窗口函数测试
+-- ============================================
+CREATE TABLE IF NOT EXISTS test_window AS
 SELECT
-t.uid AS hand_by_hand_uid,
-t.rating_id,
-t.game_info_uid,
-t.property,
-t.dt,
-trim(t.game_id) AS game_id,
-t.seated_patron_exists,
-t.game_start_datetime,
-t.game_finish_datetime,
-trim(t.hardware_id) AS table_device_id,
-t.operation_id,
-t.bet_chip_sum, 
-t.pay_off_sum,
-t.box_number AS box_number,
-t.chip_set_name AS chipset_type,
-t.create_datetime
+    id,
+    category,
+    amount,
+    SUM(amount) OVER (PARTITION BY category ORDER BY id) AS running_total,
+    ROW_NUMBER() OVER (PARTITION BY category ORDER BY amount DESC) AS rank_in_category,
+    LAG(amount, 1) OVER (PARTITION BY category ORDER BY id) AS prev_amount
 FROM (
-SELECT
-	uid,
-	rating_id,
-	game_info_uid,
-	property,
-	dt,
-	game_id,
-	seated_patron_exists,
-	game_start_datetime,
-	game_finish_datetime,
-	hardware_id,
-	operation_id,
-	bet_chip_sum,
-	pay_off_sum,
-	box_number,
-	patron_id,
-	chip_set_name,
-	create_datetime
-FROM tapdata_patron_rating_hand_by_hand
-WHERE
-	bet_chip_sum = 0
-	AND chip_set_name = 'TOTAL'
-) t;
+    VALUES 
+        (1, 'A', 100),
+        (2, 'A', 200),
+        (3, 'A', 150),
+        (4, 'B', 300),
+        (5, 'B', 250)
+) AS t(id, category, amount);
+
+-- ============================================
+-- 测试完成！
+-- 可以用 SELECT * FROM test_xxx 验证结果
+-- ============================================

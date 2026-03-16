@@ -119,7 +119,8 @@ Edit `docker/make.env/common.env`:
 # Change to your image registry
 IMAGE_REPO_ROOT=quay.io/<your-org>
 PROJECT_NAME=flink
-APP_NAME=base
+APP_NAME=dwd_ewallet
+IMAGE_TAG=0.1.0
 ```
 
 #### 4.2 Set the Version
@@ -352,7 +353,8 @@ cd ..
 # 修改为你的镜像仓库
 IMAGE_REPO_ROOT=quay.io/<your-org>
 PROJECT_NAME=flink
-APP_NAME=base
+APP_NAME=dwd_ewallet
+IMAGE_TAG=0.1.0
 ```
 
 #### 4.2 设置版本号

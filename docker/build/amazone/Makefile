@@ -19,7 +19,7 @@ build.app:
 	  if [ -n "${AMAZONE_IMAGE}" ] && [ "${AMAZONE_IMAGE##*:}" != "" ] && [ "${AMAZONE_IMAGE##*:}" != -* ]; then \
 	    IMG="${AMAZONE_IMAGE}"; \
 	  else \
-	    IMG="${IMAGE_REPO_ROOT}/${PROJECT_NAME}_${APP_NAME}:amazone"; \
+	    IMG="${IMAGE_REPO_ROOT}/${PROJECT_NAME}_${APP_NAME}:${IMAGE_TAG}"; \
 	  fi; \
 	  echo "[info] IMAGE not provided; defaulting to $$IMG"; \
 	fi; \
@@ -44,7 +44,7 @@ push.app:
 	  if [ -n "${AMAZONE_IMAGE}" ] && [ "${AMAZONE_IMAGE##*:}" != "" ] && [ "${AMAZONE_IMAGE##*:}" != -* ]; then \
 	    IMG="${AMAZONE_IMAGE}"; \
 	  else \
-	    IMG="${IMAGE_REPO_ROOT}/${PROJECT_NAME}_${APP_NAME}:amazone"; \
+	    IMG="${IMAGE_REPO_ROOT}/${PROJECT_NAME}_${APP_NAME}:${IMAGE_TAG}"; \
 	  fi; \
 	  echo "[info] IMAGE not provided; defaulting to $$IMG"; \
 	fi; \

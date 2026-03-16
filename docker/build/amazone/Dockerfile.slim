@@ -36,14 +36,21 @@ RUN export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto && \
     uv pip install --python /opt/venv/bin/python3 --no-cache -r /tmp/requirements.txt && \
     uv pip install --python /opt/venv/bin/python3 --no-cache --upgrade \
     "protobuf>=4.25.8" \
-    "pyarrow>=14.0.1" && \
+    "pyarrow>=14.0.1" \
+    "jaraco.context>=6.1.0" \
+    "wheel>=0.46.2" && \
     # Clean up Python cache and unnecessary files
     find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
     find /opt/venv -type f -name '*.pyc' -delete && \
     find /opt/venv -type f -name '*.pyo' -delete && \
     find /opt/venv -type d -name 'tests' -exec rm -rf {} + 2>/dev/null || true && \
     find /opt/python -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
-    find /opt/python -type f -name '*.pyc' -delete
+    find /opt/python -type f -name '*.pyc' -delete && \
+    # Remove vulnerable vendored dependencies from setuptools (CVE-2026-23949, CVE-2026-24049)
+    rm -rf /opt/venv/lib/python3.11/site-packages/setuptools/_vendor/jaraco.context* && \
+    rm -rf /opt/venv/lib/python3.11/site-packages/setuptools/_vendor/wheel* && \
+    rm -rf /opt/python/lib/python3.11/site-packages/setuptools/_vendor/jaraco.context* && \
+    rm -rf /opt/python/lib/python3.11/site-packages/setuptools/_vendor/wheel*
 
 # Stage 3: Final runtime stage (minimal)
 FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal
@@ -52,6 +59,7 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2023-minimal
 RUN microdnf install -y \
     ca-certificates findutils shadow-utils \
     java-17-amazon-corretto-headless \
+    hostname util-linux \
     && microdnf clean all \
     && rm -rf /var/cache/yum
 

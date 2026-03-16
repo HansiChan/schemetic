@@ -61,6 +61,18 @@ def iter_sql_statements(sql_path: Path, cfg: Dict[str, str]) -> Iterable[str]:
         yield Template(trailer).substitute(ctx)
 
 
+def is_dml_statement(stmt: str) -> bool:
+    """Check if a statement is a DML that triggers job execution."""
+    upper = stmt.strip().upper()
+    # INSERT statements always trigger execution
+    if upper.startswith("INSERT"):
+        return True
+    # CTAS (CREATE TABLE ... AS SELECT) triggers execution
+    if upper.startswith("CREATE TABLE") and " AS " in upper and "SELECT" in upper:
+        return True
+    return False
+
+
 def main():
     cfg = get_cfg()
     redacted = {k: ("***" if "KEY" in k else v) for k, v in cfg.items()}
@@ -83,15 +95,64 @@ def main():
         raise FileNotFoundError(f"SQL file not found: {sql_path}")
 
     LOG.info("Loading SQL statements from %s ...", sql_path)
-    table_result = None
+    
+    # Collect statements: DDL executed immediately, DML collected for batch execution
+    ddl_statements = []
+    dml_statements = []
+    
     for stmt in iter_sql_statements(sql_path, cfg):
-        LOG.info("Executing: %s", stmt[:200])
+        if is_dml_statement(stmt):
+            dml_statements.append(stmt)
+        else:
+            ddl_statements.append(stmt)
+    
+    # Execute DDL statements first (CREATE CATALOG, USE, CREATE TABLE, etc.)
+    for stmt in ddl_statements:
+        LOG.info("Executing DDL: %s", stmt[:200])
+        t_env.execute_sql(stmt)
+    
+    # In Application Mode, we can only execute ONE job
+    # If there are multiple DML statements, we need to handle them differently
+    if len(dml_statements) == 0:
+        LOG.info("No DML statements to execute.")
+        return
+    elif len(dml_statements) == 1:
+        # Single DML - execute directly
+        stmt = dml_statements[0]
+        LOG.info("Executing single DML: %s", stmt[:200])
         table_result = t_env.execute_sql(stmt)
-
-    if table_result is not None:
         job_client = table_result.get_job_client()
         if job_client is not None:
+            LOG.info("Waiting for job to complete...")
             job_client.get_job_execution_result().result()
+    else:
+        # Multiple DML statements - use StatementSet for INSERT statements only
+        # Note: CTAS cannot be added to StatementSet, must be executed separately
+        insert_stmts = [s for s in dml_statements if s.strip().upper().startswith("INSERT")]
+        ctas_stmts = [s for s in dml_statements if not s.strip().upper().startswith("INSERT")]
+        
+        if ctas_stmts:
+            LOG.warning("Found %d CTAS statements. In Application Mode, only ONE can be executed.", len(ctas_stmts))
+            LOG.warning("Executing only the first CTAS. Consider restructuring your SQL.")
+            stmt = ctas_stmts[0]
+            LOG.info("Executing CTAS: %s", stmt[:200])
+            table_result = t_env.execute_sql(stmt)
+            job_client = table_result.get_job_client()
+            if job_client is not None:
+                LOG.info("Waiting for CTAS job to complete...")
+                job_client.get_job_execution_result().result()
+        elif insert_stmts:
+            # Use StatementSet for multiple INSERTs
+            stmt_set = t_env.create_statement_set()
+            for stmt in insert_stmts:
+                LOG.info("Adding to StatementSet: %s", stmt[:200])
+                stmt_set.add_insert_sql(stmt)
+            LOG.info("Executing StatementSet with %d INSERT statements...", len(insert_stmts))
+            table_result = stmt_set.execute()
+            job_client = table_result.get_job_client()
+            if job_client is not None:
+                LOG.info("Waiting for job to complete...")
+                job_client.get_job_execution_result().result()
 
 
 if __name__ == "__main__":

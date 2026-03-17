@@ -1,7 +1,6 @@
 SET 'execution.runtime-mode' = 'streaming';
 SET 'table.dynamic-table-options.enabled' = 'true';
 SET 'table.exec.sink.upsert-materialize' = 'NONE';
-SET 'pipeline.name' = 'customer_hourly_order_metrics';
 
 SET 'execution.checkpointing.interval' = '10s';
 SET 'execution.checkpointing.mode' = 'EXACTLY_ONCE';

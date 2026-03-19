@@ -67,7 +67,7 @@ schemetic/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-org>/schemetic.git
+git clone https://github.com/HansiChan/schemetic.git
 cd schemetic
 ```
 

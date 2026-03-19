@@ -72,6 +72,7 @@ COPY --from=flink-base --chown=9999:9999 /opt/flink/bin /opt/flink/bin
 COPY --from=flink-base --chown=9999:9999 /opt/flink/lib /opt/flink/lib
 COPY --from=flink-base --chown=9999:9999 /opt/flink/opt /opt/flink/opt
 COPY --from=flink-base --chown=9999:9999 /opt/flink/plugins /opt/flink/plugins
+COPY --from=flink-base --chown=9999:9999 /opt/flink/conf /opt/flink/conf
 COPY --from=flink-base /docker-entrypoint.sh /docker-entrypoint.sh
 
 # Copy Python and virtualenv from builder with ownership

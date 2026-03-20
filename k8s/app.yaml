@@ -19,6 +19,7 @@ spec:
     state.savepoints.dir:  "file:///flink-data/flink-sp"
     python.client.executable: "/opt/venv/bin/python3"
     python.executable: "/opt/venv/bin/python3"
+    env.java.opts: "--add-opens java.base/java.util=ALL-UNNAMED"
 
   jobManager:
     resource:
@@ -33,7 +34,7 @@ spec:
     replicas: 2
 
   job:
-    jarURI: local:///opt/flink/lib/flink-python-1.20.1.jar
+    jarURI: local:///opt/flink/lib/flink-python-1.20.2.jar
     entryClass: org.apache.flink.client.python.PythonDriver
     args:
       - "-py"

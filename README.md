@@ -1,93 +1,93 @@
 # Schemetic — Flink SQL on Paimon (K8s)
 
-基于 PyFlink + Paimon 的流式 SQL 数据管道，打包为 Docker 镜像并通过 Flink Kubernetes Operator 部署。
+A streaming SQL data pipeline built with PyFlink + Apache Paimon, packaged as a Docker image for Kubernetes deployment via the Flink K8s Operator.
 
 ---
 
-## 目录
+## Table of Contents
 
-- [前置条件](#前置条件)
-- [仓库结构](#仓库结构)
-- [快速开始](#快速开始)
-  - [1. 克隆仓库](#1-克隆仓库)
-  - [2. 下载 Flink 插件 JAR](#2-下载-flink-插件-jar)
-  - [3. 编写 SQL 管道](#3-编写-sql-管道)
-  - [4. 配置构建环境](#4-配置构建环境)
-  - [5. 构建 Docker 镜像](#5-构建-docker-镜像)
-  - [6. 推送镜像](#6-推送镜像)
-  - [7. 配置 Kubernetes](#7-配置-kubernetes)
-  - [8. 部署到 Kubernetes](#8-部署到-kubernetes)
-- [镜像变体说明](#镜像变体说明)
-- [CA 证书处理](#ca-证书处理)
-- [自定义配置](#自定义配置)
-- [卸载 / 清理](#卸载--清理)
-- [常见问题排查](#常见问题排查)
+- [Prerequisites](#prerequisites)
+- [Repository Layout](#repository-layout)
+- [Getting Started](#getting-started)
+  - [1. Clone the Repository](#1-clone-the-repository)
+  - [2. Download Flink Plugin JARs](#2-download-flink-plugin-jars)
+  - [3. Write Your SQL Pipeline](#3-write-your-sql-pipeline)
+  - [4. Configure the Build Environment](#4-configure-the-build-environment)
+  - [5. Build the Docker Image](#5-build-the-docker-image)
+  - [6. Push the Image](#6-push-the-image)
+  - [7. Configure Kubernetes](#7-configure-kubernetes)
+  - [8. Deploy to Kubernetes](#8-deploy-to-kubernetes)
+- [Image Variants](#image-variants)
+- [CA Certificate Handling](#ca-certificate-handling)
+- [Customization](#customization)
+- [Uninstall / Cleanup](#uninstall--cleanup)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## 前置条件
+## Prerequisites
 
-| 工具 | 用途 |
+| Tool | Purpose |
 |---|---|
-| **Docker** | 构建与推送镜像 |
-| **GNU Make** | 自动化构建/部署 |
-| **kubectl** | 已配置好的 K8s 集群访问 |
-| **envsubst** (gettext) | K8s 清单模板渲染 |
-| **Flink K8s Operator** | 集群中已安装 Flink CRD 和 Operator |
+| **Docker** | Build and push images |
+| **GNU Make** | Build automation |
+| **kubectl** | Configured K8s cluster access |
+| **envsubst** (gettext) | K8s manifest template rendering |
+| **Flink K8s Operator** | Flink CRD and Operator installed in the cluster |
 
 ---
 
-## 仓库结构
+## Repository Layout
 
 ```
 schemetic/
-├── VERSION                          # 镜像版本号
-├── Makefile                         # 项目脚手架 (create.project.*)
+├── VERSION                          # Image version number
+├── Makefile                         # Project scaffolding (create.project.*)
 ├── src/
-│   ├── app.py                       # PyFlink 入口程序
+│   ├── app.py                       # PyFlink entry program
 │   └── sql/
-│       ├── pipeline.sql             # 主 SQL 管道 (会被打包进镜像)
-│       └── eWallet/                 # 按业务域组织的 SQL 脚本
+│       ├── pipeline.sql             # Main SQL pipeline (bundled into image)
+│       └── eWallet/                 # Business-domain SQL scripts
 ├── flink-plugins/
-│   ├── download-plugins.sh          # 一键下载所有 JAR 依赖
-│   └── *.jar                        # Flink/Paimon/Hadoop JAR (gitignored)
+│   ├── download-plugins.sh          # One-click JAR download script
+│   └── *.jar                        # Flink/Paimon/Hadoop JARs (gitignored)
 ├── docker/
 │   ├── make.env/
-│   │   ├── common.env               # 构建公共变量 (镜像仓库、项目名等)
-│   │   └── common.local.env         # 本地覆盖 (gitignored, 需手动创建)
+│   │   ├── common.env               # Shared build variables (registry, project name, etc.)
+│   │   └── common.local.env         # Local overrides (gitignored, create manually)
 │   └── build/
-│       ├── dev/                     # Debian 基础镜像构建
-│       ├── amazone/                 # Amazon Linux 2023 基础镜像构建
-│       │   ├── Dockerfile           # 标准版 (单阶段)
-│       │   ├── Dockerfile.slim      # 精简版 (三阶段, 推荐生产用)
+│       ├── dev/                     # Debian-based build
+│       ├── amazone/                 # Amazon Linux 2023 build
+│       │   ├── Dockerfile           # Standard (single-stage)
+│       │   ├── Dockerfile.slim      # Slim (three-stage, recommended for production)
 │       │   ├── Makefile
-│       │   ├── requirements.txt     # Python 依赖
-│       │   └── minio-ca.crt         # MinIO CA 证书
-│       └── shared/                  # 构建公共逻辑
+│       │   ├── requirements.txt     # Python dependencies
+│       │   └── minio-ca.crt         # MinIO CA certificate
+│       └── shared/                  # Shared build logic
 ├── k8s/
-│   ├── app.yaml                     # FlinkDeployment 模板
-│   ├── Makefile                     # K8s 部署自动化
-│   ├── .env                         # K8s 部署变量
+│   ├── app.yaml                     # FlinkDeployment template
+│   ├── Makefile                     # K8s deployment automation
+│   ├── .env                         # K8s deployment variables
 │   └── env/
-│       ├── config.env               # 非敏感环境变量 (gitignored)
-│       └── secret.env               # 敏感环境变量 (gitignored)
-└── argo/                            # ArgoCD / Kustomize 配置
+│       ├── config.env               # Non-sensitive env vars (gitignored)
+│       └── secret.env               # Sensitive env vars (gitignored)
+└── argo/                            # ArgoCD / Kustomize configuration
 ```
 
 ---
 
-## 快速开始
+## Getting Started
 
-### 1. 克隆仓库
+### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-org>/schemetic.git
+git clone https://github.com/HansiChan/schemetic.git
 cd schemetic
 ```
 
-### 2. 下载 Flink 插件 JAR
+### 2. Download Flink Plugin JARs
 
-`flink-plugins/` 目录中的 JAR 文件被 `.gitignore` 排除，首次使用需要下载：
+JAR files under `flink-plugins/` are excluded by `.gitignore`. Run the download script on first use:
 
 ```bash
 cd flink-plugins
@@ -95,78 +95,83 @@ bash download-plugins.sh
 cd ..
 ```
 
-脚本会自动从 Maven Central 下载以下组件（已有的 JAR 会自动跳过）：
+The script downloads the following from Maven Central (existing JARs are skipped automatically):
 
-| 组件 | 说明 |
+| Component | Description |
 |---|---|
-| `flink-python-1.20.2.jar` | PyFlink 驱动 |
-| `flink-s3-fs-hadoop-1.20.2.jar` | S3 文件系统支持 |
-| `flink-table-*` | Flink Table/SQL 引擎 |
-| `flink-connector-datagen` | DataGen 测试源 |
-| `paimon-flink-1.20-1.3.1.jar` | Paimon Flink 连接器 |
-| `paimon-s3-1.3.1.jar` | Paimon S3 存储支持 |
-| `hadoop-*.jar` | Hadoop 依赖 (HDFS、MapReduce) |
+| `flink-python-1.20.2.jar` | PyFlink driver |
+| `flink-s3-fs-hadoop-1.20.2.jar` | S3 filesystem support |
+| `flink-table-*` | Flink Table/SQL engine |
+| `flink-connector-datagen` | DataGen test source |
+| `paimon-flink-1.20-1.3.1.jar` | Paimon Flink connector |
+| `paimon-s3-1.3.1.jar` | Paimon S3 storage support |
+| `hadoop-*.jar` | Hadoop dependencies (HDFS, MapReduce) |
 
-### 3. 编写 SQL 管道
+### 3. Write Your SQL Pipeline
 
-编辑 `src/sql/pipeline.sql`，这是会被打包进 Docker 镜像的主 SQL 文件。SQL 中支持 `${变量}` 模板语法，运行时由 `app.py` 替换：
+Edit `src/sql/pipeline.sql` — this is the main SQL file bundled into the Docker image. Template variables using `${VAR}` syntax are substituted at runtime by `app.py`:
 
-| 变量 | 来源 | 说明 |
+| Variable | Source Env Var | Description |
 |---|---|---|
-| `${CATALOG}` | 环境变量 `PAIMON_CATALOG` | Paimon Catalog 名称 |
-| `${WAREHOUSE}` | 环境变量 `PAIMON_WAREHOUSE` | Paimon Warehouse 路径 |
-| `${S3_ENDPOINT}` | 环境变量 `S3_ENDPOINT` | S3/MinIO 端点 |
-| `${S3_ACCESS_KEY}` | 环境变量 `S3_ACCESS_KEY` | S3 Access Key |
-| `${S3_SECRET_KEY}` | 环境变量 `S3_SECRET_KEY` | S3 Secret Key |
-| `${S3_PATH_STYLE}` | 环境变量 `S3_PATH_STYLE` | 路径风格访问 (`true`/`false`) |
-| `${DATABASE}` | 环境变量 `PAIMON_DATABASE` | 默认数据库名 |
+| `${CATALOG}` | `PAIMON_CATALOG` | Paimon Catalog name |
+| `${WAREHOUSE}` | `PAIMON_WAREHOUSE` | Paimon Warehouse path |
+| `${S3_ENDPOINT}` | `S3_ENDPOINT` | S3/MinIO endpoint |
+| `${S3_ACCESS_KEY}` | `S3_ACCESS_KEY` | S3 Access Key |
+| `${S3_SECRET_KEY}` | `S3_SECRET_KEY` | S3 Secret Key |
+| `${S3_PATH_STYLE}` | `S3_PATH_STYLE` | Path-style access (`true`/`false`) |
+| `${DATABASE}` | `PAIMON_DATABASE` | Default database name |
 
-> **多条 INSERT**: `app.py` 会自动将多条 `INSERT INTO` 语句合并到 `StatementSet` 中作为单个 Flink Job 执行。
+> **Multiple INSERTs**: `app.py` automatically merges multiple `INSERT INTO` statements into a single `StatementSet` and executes them as one Flink job.
 
-### 4. 配置构建环境
+### 4. Configure the Build Environment
 
-#### 4.1 编辑公共变量
+#### 4.1 Edit Shared Variables
 
-编辑 `docker/make.env/common.env`：
+Edit `docker/make.env/common.env`:
 
 ```env
-# 修改为你的镜像仓库
+# Change to your image registry
 IMAGE_REPO_ROOT=quay.io/<your-org>
 PROJECT_NAME=flink
-APP_NAME=base
+APP_NAME=dwd_ewallet
+IMAGE_TAG=0.1.0
 ```
 
-#### 4.2 设置版本号
+#### 4.2 Set the Version
 
 ```bash
 echo "0.1.0" > VERSION
 ```
 
-#### 4.3 创建本地覆盖文件 (可选)
+#### 4.3 Create Local Overrides (Optional)
 
 ```bash
 cp docker/make.env/common.local.env.example docker/make.env/common.local.env
-# 编辑 common.local.env 覆盖任何需要本地化的值
+# Edit common.local.env to override any values locally
 ```
 
-#### 4.4 如果使用自定义 CA（如自签 MinIO）
+#### 4.4 Custom CA Certificate (If Using Self-Signed MinIO)
 
-将你的 CA 证书放置到对应的构建目录：
+Place your CA certificate in the build directory:
 
 ```bash
 cp /path/to/your-ca.crt docker/build/amazone/minio-ca.crt
 ```
 
-### 5. 构建 Docker 镜像
+### 5. Build the Docker Image
 
-项目提供了多种 Dockerfile，推荐使用 **amazone slim** 版本（Amazon Linux 2023 三阶段构建，最小化镜像体积）：
+The project provides multiple Dockerfiles. The **amazone slim** variant (Amazon Linux 2023, three-stage build) is recommended for production:
 
 ```bash
-# 方式 A: 使用 Make (推荐)
+# Option A: Using Make (recommended)
 cd docker/build/amazone
 make build.app DOCKERFILE=$(pwd)/Dockerfile.slim
 
-# 方式 B: 直接使用 Docker (从仓库根目录)
+# To use a custom tag, pass IMAGE=:
+make build.app DOCKERFILE=$(pwd)/Dockerfile.slim \
+  IMAGE=quay.io/<your-org>/flink_base:0.1.0-amazone-slim
+
+# Option B: Using Docker directly (from repo root)
 docker build --platform linux/amd64 \
   -f docker/build/amazone/Dockerfile.slim \
   --build-arg PYTHON_VERSION=3.11 \
@@ -175,45 +180,47 @@ docker build --platform linux/amd64 \
   .
 ```
 
-> 镜像 Tag 默认格式: `{IMAGE_REPO_ROOT}/{PROJECT_NAME}_{APP_NAME}:{VERSION}-amazone.{BUILD_NUMBER}`
+> **Note on image tags**: When using `make build.app` without `IMAGE=`, the default tag is `{IMAGE_REPO_ROOT}/{PROJECT_NAME}_{APP_NAME}:amazone`. The Dockerfile choice (standard vs slim) does **not** affect the tag — pass `IMAGE=` explicitly if you need a version-specific tag.
 
-### 6. 推送镜像
+### 6. Push the Image
 
 ```bash
-# 方式 A: Make
+# Option A: Make (pushes the same tag used in build.app)
 cd docker/build/amazone
 make push.app
+# Or with a custom tag:
+make push.app IMAGE=quay.io/<your-org>/flink_base:0.1.0-amazone-slim
 
-# 方式 B: Docker
+# Option B: Docker
 docker push quay.io/<your-org>/flink_base:0.1.0-amazone-slim
 ```
 
-### 7. 配置 Kubernetes
+### 7. Configure Kubernetes
 
-#### 7.1 编辑部署变量
+#### 7.1 Edit Deployment Variables
 
-编辑 `k8s/.env`：
+Edit `k8s/.env`:
 
 ```env
-# 镜像信息 (改为你实际推送的镜像)
+# Image info (change to your actual pushed image)
 IMAGE_REPO_ROOT=quay.io/<your-org>
 DEV_IMAGE_NAME=flink_base
 DEV_IMAGE_TAG=0.1.0-amazone-slim
 DEV_IMAGE=${IMAGE_REPO_ROOT}/${DEV_IMAGE_NAME}:${DEV_IMAGE_TAG}
 
-# K8s 配置
-NAME=ewallet-dwd-pipeline        # FlinkDeployment 名称
-NAMESPACE=flink                   # K8s 命名空间
+# K8s config
+NAME=ewallet-dwd-pipeline        # FlinkDeployment name
+NAMESPACE=flink                   # K8s namespace
 SERVICE_ACCOUNT=flink             # K8s ServiceAccount
 
-# Flink 配置
+# Flink config
 FLINK_VERSION=v1_20
 FLINK_DEPLOY_MODE=native
 ```
 
-#### 7.2 创建环境变量文件
+#### 7.2 Create Environment Variable Files
 
-**非敏感变量** — `k8s/env/config.env`：
+**Non-sensitive variables** — `k8s/env/config.env`:
 
 ```env
 PAIMON_WAREHOUSE=s3a://prd-datalake/
@@ -226,102 +233,103 @@ PIPELINE_NAME=ewallet-ods-to-dwd
 CHECKPOINT_INTERVAL=10 s
 ```
 
-**敏感变量** — `k8s/env/secret.env`：
+**Sensitive variables** — `k8s/env/secret.env`:
 
 ```env
 S3_ACCESS_KEY=<your-access-key>
 S3_SECRET_KEY=<your-secret-key>
 ```
 
-> ⚠️ `secret.env` 已被 `.gitignore` 排除，请勿提交到 Git。
+> ⚠️ `secret.env` is excluded by `.gitignore` — do not commit it to Git.
 
-#### 7.3 确认 PVC
+#### 7.3 Verify PVC
 
-确保目标命名空间中存在名为 `flink-data` 的 PersistentVolumeClaim，用于 Checkpoint 和 Savepoint 存储。
+Ensure a PersistentVolumeClaim named `flink-data` exists in the target namespace for Checkpoint and Savepoint storage.
 
-### 8. 部署到 Kubernetes
+### 8. Deploy to Kubernetes
 
 ```bash
 cd k8s
 
-# 一键部署 (自动创建 namespace、ConfigMap、Secret 并 apply FlinkDeployment)
+# One-click deploy (creates namespace, ConfigMap, Secret, and applies FlinkDeployment)
 make up
 
-# 或逐步执行：
-make ns            # 创建命名空间
-make env.up        # 创建/更新 ConfigMap (非敏感变量)
-make secret.up     # 创建/更新 Secret (敏感变量)
+# Or step by step:
+make ns            # Create namespace
+make env.up        # Create/update ConfigMap (non-sensitive vars)
+make secret.up     # Create/update Secret (sensitive vars)
 ```
 
-检查部署状态：
+Check deployment status:
 
 ```bash
-make status                                      # 查看 Pod 状态
-kubectl logs -n flink <jobmanager-pod> -f         # 查看 JobManager 日志
-kubectl logs -n flink <taskmanager-pod> -f        # 查看 TaskManager 日志
+make status                                      # View Pod status
+kubectl logs -n flink <jobmanager-pod> -f         # View JobManager logs
+kubectl logs -n flink <taskmanager-pod> -f        # View TaskManager logs
 ```
 
 ---
 
-## 镜像变体说明
+## Image Variants
 
-| 路径 | 基础镜像 | 构建方式 | 适用场景 |
-|---|---|---|---|
-| `docker/build/dev/Dockerfile` | `flink:1.20.1-scala_2.12` (Debian) | 单阶段 | 开发调试 |
-| `docker/build/amazone/Dockerfile` | Amazon Linux 2023 | 单阶段 | EKS / 简单部署 |
-| `docker/build/amazone/Dockerfile.slim` | Amazon Linux 2023 | **三阶段** | **生产推荐** (最小镜像) |
+| Path | Base Flink Version | Base OS | Build Strategy | Use Case |
+|---|---|---|---|---|
+| `docker/build/dev/Dockerfile` | 1.20.1 | Debian (flink official) | Single-stage | Development / debugging |
+| `docker/build/amazone/Dockerfile` | 1.20.2 | Amazon Linux 2023 | Single-stage | EKS / simple deployments |
+| `docker/build/amazone/Dockerfile.slim` | 1.20.2 | Amazon Linux 2023 | **Three-stage** | **Production (smallest image)** |
 
-Slim 版通过三阶段构建丢弃 gcc/make 等编译工具，只保留运行时依赖，镜像体积显著更小。
-
----
-
-## CA 证书处理
-
-如果你的对象存储 (MinIO) 使用自签 CA 证书：
-
-1. 证书已在构建时通过 `register-ca.sh` 导入到 Java truststore (`/etc/ssl/truststore/cacerts`)
-2. 运行时通过 `JAVA_TOOL_OPTIONS` 环境变量指定 truststore 路径
-3. 无需 initContainer，证书已 bake 进镜像
-
-如需更换 CA 证书，替换 `docker/build/amazone/minio-ca.crt` 后重新构建镜像。
+The slim variant discards build tools (gcc, make) via multi-stage builds, keeping only runtime dependencies for a significantly smaller image.
 
 ---
 
-## 自定义配置
+## CA Certificate Handling
 
-| 需求 | 操作 |
+If your object store (e.g., MinIO) uses a self-signed CA certificate:
+
+1. The certificate is imported into a Java truststore (`/etc/ssl/truststore/cacerts`) at build time via `register-ca.sh`
+2. At runtime, `JAVA_TOOL_OPTIONS` points the JVM to the truststore
+3. No initContainer is required — the certificate is baked into the image
+
+To update the CA, replace `docker/build/amazone/minio-ca.crt` and rebuild.
+
+---
+
+## Customization
+
+| Need | Action |
 |---|---|
-| 修改 Flink 资源 (CPU/内存) | 编辑 `k8s/app.yaml` 中的 `jobManager` / `taskManager` |
-| 调整并行度 | 编辑 `k8s/app.yaml` 中 `job.parallelism` |
-| 修改 Checkpoint 间隔 | 编辑 `k8s/env/config.env` 中 `CHECKPOINT_INTERVAL` |
-| 添加 Python 依赖 | 编辑 `docker/build/amazone/requirements.txt`，重新构建镜像 |
-| 更新 Flink/Paimon 版本 | 编辑 `flink-plugins/download-plugins.sh` 中的版本号，重新下载并构建 |
-| 通过 ConfigMap 挂载 SQL | 参考 `k8s/SQL_CONFIGMAP_GUIDE.md`，无需重新构建镜像 |
+| Change Flink resources (CPU/memory) | Edit `jobManager` / `taskManager` in `k8s/app.yaml` |
+| Adjust parallelism | Edit `job.parallelism` in `k8s/app.yaml` |
+| Change checkpoint interval | Edit `CHECKPOINT_INTERVAL` in `k8s/env/config.env` |
+| Add Python dependencies | Edit `docker/build/amazone/requirements.txt`, rebuild image |
+| Update Flink/Paimon version | Edit versions in `flink-plugins/download-plugins.sh`, re-download and rebuild |
+| Mount SQL via ConfigMap | See `k8s/SQL_CONFIGMAP_GUIDE.md` (no image rebuild needed) |
 
 ---
 
-## 卸载 / 清理
+## Uninstall / Cleanup
 
 ```bash
-# 删除 K8s 资源
+# Delete K8s resources
 cd k8s
 make down
 
-# 清理本地 Docker 镜像
+# Clean local Docker images
 cd docker
 make clean
 ```
 
 ---
 
-## 常见问题排查
+## Troubleshooting
 
-| 问题 | 排查方向 |
+| Issue | Resolution |
 |---|---|
-| JAR 下载失败 | 检查网络是否能访问 Maven Central，或手动下载放入 `flink-plugins/` |
-| `envsubst` 未找到 | 安装 gettext: `brew install gettext` (macOS) 或 `apt install gettext` (Linux) |
-| CA/SSL 错误 | 确认 `minio-ca.crt` 是否正确，检查 `JAVA_TOOL_OPTIONS` 是否在 Pod 中生效 |
-| `NoClassDefFoundError` | 检查 `flink-plugins/` 中是否缺少对应 JAR，重新运行 `download-plugins.sh` |
-| Pod CrashLoopBackOff | 检查 JM 日志：`kubectl logs -n flink <pod>` |
-| SQL 语法错误 | 在 `pipeline.sql` 中调试，确保 `${变量}` 模板语法正确 |
-| 多 INSERT 未执行 | `app.py` 使用 `StatementSet` 合并多条 INSERT，检查日志确认所有语句是否被正确解析 |
+| JAR download failure | Check network access to Maven Central, or manually download JARs into `flink-plugins/` |
+| `envsubst` not found | Install gettext: `brew install gettext` (macOS) or `apt install gettext` (Linux) |
+| CA/SSL errors | Verify `minio-ca.crt` is correct and check that `JAVA_TOOL_OPTIONS` is active in the Pod |
+| `NoClassDefFoundError` | Missing JAR in `flink-plugins/` — re-run `download-plugins.sh` |
+| Pod CrashLoopBackOff | Check JM logs: `kubectl logs -n flink <pod>` |
+| SQL syntax errors | Debug in `pipeline.sql`, ensure `${VAR}` template syntax is correct |
+| Multiple INSERTs not executing | `app.py` uses `StatementSet` to merge INSERTs — check logs to confirm all statements are parsed |
+| Build fails on ARM Mac | Ensure `--platform linux/amd64` is set (required for EKS/x86 clusters) |

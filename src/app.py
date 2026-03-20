@@ -108,8 +108,23 @@ def main():
     
     # Execute DDL statements first (CREATE CATALOG, USE, CREATE TABLE, etc.)
     for stmt in ddl_statements:
-        LOG.info("Executing DDL: %s", stmt[:200])
-        t_env.execute_sql(stmt)
+        upper = stmt.strip().upper()
+        if upper.startswith("SET "):
+            # Handle SET statements via config API instead of executeSql()
+            # Parse: SET 'key' = 'value'
+            try:
+                parts = stmt.strip()[4:].strip()  # remove "SET "
+                key, value = parts.split("=", 1)
+                key = key.strip().strip("'\"")
+                value = value.strip().strip("'\"")
+                LOG.info("Setting config: %s = %s", key, value)
+                t_env.get_config().set(key, value)
+            except Exception as e:
+                LOG.warning("Failed to parse SET statement, trying executeSql: %s (error: %s)", stmt[:200], e)
+                t_env.execute_sql(stmt)
+        else:
+            LOG.info("Executing DDL: %s", stmt[:200])
+            t_env.execute_sql(stmt)
     
     # In Application Mode, we can only execute ONE job
     # If there are multiple DML statements, we need to handle them differently

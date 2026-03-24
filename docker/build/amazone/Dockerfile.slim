@@ -80,9 +80,13 @@ COPY --from=python-builder --chown=9999:9999 /opt/python /opt/python
 COPY --from=python-builder --chown=9999:9999 /opt/venv /opt/venv
 
 # Set environment variables
+ENV TZ=Asia/Shanghai
 ENV FLINK_HOME=/opt/flink
 ENV JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
 ENV PATH=$FLINK_HOME/bin:$JAVA_HOME/bin:$PATH
+
+# Set timezone
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo "$TZ" > /etc/timezone
 
 # Link Python
 RUN ln -sf /opt/python/bin/python3 /usr/local/bin/python3

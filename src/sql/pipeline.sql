@@ -59,13 +59,13 @@ CREATE TABLE IF NOT EXISTS dwd.ewallet_payments (
 ) PARTITIONED BY (pt_created_date) WITH (
     'changelog-producer'                    = 'input',
     'merge-engine'                          = 'deduplicate',
-    'bucket'                                = '-1',
+    'bucket'                                = '4',
     'snapshot.num-retained.min'              = '5',
-    'snapshot.num-retained.max'              = '100',
-    'snapshot.time-retained'                 = '7 d',
+    'snapshot.num-retained.max'              = '5000',
+    'snapshot.time-retained'                 = '3 d',
     'compaction.async.enabled'               = 'true',
     'num-sorted-run.compaction-trigger'      = '3',
-    'num-sorted-run.stop-trigger'            = '5',
+    'num-sorted-run.stop-trigger'            = '9',
     'target-file-size'                       = '128 mb',
     'scan.plan-sort-partition'               = 'true',
     'partition.expiration-time'              = '3650 d',
@@ -101,7 +101,7 @@ SELECT
     CURRENT_TIMESTAMP               AS dwd_create_at,
     CURRENT_TIMESTAMP               AS dwd_update_at,
     `pt_created_date`               AS pt_created_date
-FROM ods_ewallet.`Payments` /*+ OPTIONS('consumer-id' = 'dwd-ewallet-payments', 'consumer.expiration-time' = '7d') */;
+FROM ods_ewallet.`Payments` /*+ OPTIONS('consumer-id' = 'dwd-ewallet-payments-v1', 'consumer.expiration-time' = '3d') */;
 
 
 -- ============================================================
@@ -146,13 +146,13 @@ CREATE TABLE IF NOT EXISTS dwd.ewallet_transaction_details (
 ) PARTITIONED BY (pt_created_date) WITH (
     'changelog-producer'                    = 'input',
     'merge-engine'                          = 'deduplicate',
-    'bucket'                                = '-1',
+    'bucket'                                = '4',
     'snapshot.num-retained.min'              = '5',
-    'snapshot.num-retained.max'              = '100',
-    'snapshot.time-retained'                 = '7 d',
+    'snapshot.num-retained.max'              = '5000',
+    'snapshot.time-retained'                 = '3 d',
     'compaction.async.enabled'               = 'true',
     'num-sorted-run.compaction-trigger'      = '3',
-    'num-sorted-run.stop-trigger'            = '5',
+    'num-sorted-run.stop-trigger'            = '9',
     'target-file-size'                       = '128 mb',
     'scan.plan-sort-partition'               = 'true',
     'partition.expiration-time'              = '3650 d',
@@ -195,4 +195,4 @@ SELECT
     CURRENT_TIMESTAMP               AS dwd_create_at,
     CURRENT_TIMESTAMP               AS dwd_update_at,
     `pt_created_date`               AS pt_created_date
-FROM ods_ewallet.`TransactionDetails` /*+ OPTIONS('consumer-id' = 'dwd-ewallet-transaction-details', 'consumer.expiration-time' = '7d') */;
+FROM ods_ewallet.`TransactionDetails` /*+ OPTIONS('consumer-id' = 'dwd-ewallet-transaction-details-v1', 'consumer.expiration-time' = '3d') */;

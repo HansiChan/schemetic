@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: paimon_ods
+    description: "External catalog exposing Paimon ODS data in StarRocks"
+    database: paimon_catalog  # The name of your external catalog in StarRocks
+    schema: ods               # The schema within the catalog
+    tables:
+      - name: ewallet_transaction_details
+        description: "Raw transaction data from Paimon"

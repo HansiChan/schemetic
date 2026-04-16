@@ -2,7 +2,7 @@ SET 'execution.runtime-mode' = 'streaming';
 SET 'table.dynamic-table-options.enabled' = 'true';
 SET 'table.exec.sink.upsert-materialize' = 'NONE';
 
-SET 'execution.checkpointing.interval' = '10s';
+SET 'execution.checkpointing.interval' = '1 min';
 SET 'execution.checkpointing.mode' = 'EXACTLY_ONCE';
 
 CREATE CATALOG ${CATALOG} WITH (

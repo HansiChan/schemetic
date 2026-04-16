@@ -1,0 +1,5 @@
+dbt-core~=1.7.0
+dbt-starrocks~=1.7.0
+dagster
+dagster-webserver
+dagster-dbt

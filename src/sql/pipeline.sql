@@ -104,7 +104,7 @@ SELECT
     CURRENT_TIMESTAMP               AS dwd_create_at,
     CURRENT_TIMESTAMP               AS dwd_update_at,
     `pt_created_date`               AS pt_created_date
-FROM ods_ewallet.`Payments` /*+ OPTIONS('consumer-id' = 'dwd-ewallet-payments-v1', 'consumer.expiration-time' = '3d') */;
+FROM ods_ewallet.`Payments` /*+ OPTIONS('consumer-id' = 'dwd-ewallet-payments-v1', 'consumer.expiration-time' = '3d') */ WHERE pt_created_date IS NOT NULL;
 
 
 -- ============================================================
@@ -198,4 +198,4 @@ SELECT
     CURRENT_TIMESTAMP               AS dwd_create_at,
     CURRENT_TIMESTAMP               AS dwd_update_at,
     `pt_created_date`               AS pt_created_date
-FROM ods_ewallet.`TransactionDetails` /*+ OPTIONS('consumer-id' = 'dwd-ewallet-transaction-details-v1', 'consumer.expiration-time' = '3d') */;
+FROM ods_ewallet.`TransactionDetails` /*+ OPTIONS('consumer-id' = 'dwd-ewallet-transaction-details-v1', 'consumer.expiration-time' = '3d') */ WHERE pt_created_date IS NOT NULL;
